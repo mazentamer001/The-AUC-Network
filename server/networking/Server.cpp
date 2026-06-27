@@ -1,20 +1,54 @@
 #include "Server.h"
 #include "Session.h"
 
-Server::Server(boost::asio::io_context& io, unsigned short port) : acceptor_(io, tcp::endpoint(tcp::v4(), port)) {  //IPv4 (type of addressing scheme used to identify the machines), server listens on ONE port and waits for clients to connect on said port
+Server::Server(boost::asio::io_context& io, unsigned short port)
+    : acceptor_(io, tcp::endpoint(tcp::v4(), port))
+{
     std::cout << "Server listening on port " << port << " ..." << std::endl;
     do_accept();
 }
 
-//This is the loop that waits for clients to connect
-void Server::do_accept() {
-    acceptor_.async_accept(     //this is an async function as we dont want to block the cpu while we are waiting for a connection.
-        [this](boost::system::error_code ec, tcp::socket socket) {           //ec is the error if its empty (!ec) then everything worked, the socket is the brand new socket representing the client, every client has their own socket
-            if (!ec) {  //if no errors, constracted a session and start it
-                std::make_shared<Session>(std::move(socket))->start();       //std::move(socket) makes the LOCAL socket in server empty as there can only be one socket for each client so we move that socket to the client's session
-            } else {    //error
+void Server::do_accept()
+{
+    acceptor_.async_accept(
+        [this](boost::system::error_code ec, tcp::socket socket)
+        {
+            if (!ec)
+            {
+                auto session = std::make_shared<Session>(std::move(socket), *this); // ← pass Server ref
+                addSession(session);
+                session->start();
+            }
+            else
+            {
                 std::cerr << "Accept error: " << ec.message() << std::endl;
             }
-            do_accept();  //begin waiting for the next client
+            do_accept();
         });
+}
+
+void Server::addSession(std::shared_ptr<Session> session)
+{
+    std::lock_guard<std::mutex> lock(sessionsMutex_);
+    sessions_.push_back(session);   // stored as weak_ptr — vector accepts shared_ptr implicitly
+}
+
+void Server::broadcast(const Message& msg, std::shared_ptr<Session> exclude)
+{
+    std::lock_guard<std::mutex> lock(sessionsMutex_);
+
+    // sweep dead sessions out while we're iterating anyway
+    sessions_.erase(
+        std::remove_if(sessions_.begin(), sessions_.end(),
+            [](const std::weak_ptr<Session>& w) { return w.expired(); }),
+        sessions_.end());
+
+    for (auto& weak : sessions_)
+    {
+        if (auto session = weak.lock())     // lock() gives shared_ptr or nullptr if dead
+        {
+            if (session != exclude)         // don't echo back to the sender
+                session->send(msg);
+        }
+    }
 }
