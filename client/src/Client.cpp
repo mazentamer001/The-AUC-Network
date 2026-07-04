@@ -1,12 +1,15 @@
 #include "Client.h"
 #include <iostream>
 
+
+//constructor, initializes the socket which is used to communicate with the server and the resolver which turns domain to ip
 Client::Client(boost::asio::io_context& io, const std::string& host, const std::string& port): socket_(io), resolver_(io)
 {
-    do_resolve(host, port);
+    do_resolve(host, port); //the connection process begins immedietly
 }
 
-void Client::setOnConnected(std::function<void()> callback)
+//callbacks are functions that you give to another object so it can call it later (ex. when button is clicked, call this function)
+void Client::setOnConnected(std::function<void()> callback)     //std::function<void()> stores any function that takes no parameters and returns nothing
 {
     onConnected_ = std::move(callback);
 }
@@ -18,18 +21,18 @@ void Client::setOnMessage(std::function<void(const Message&)> callback)
 
 void Client::send(const Message& msg)
 {
-    auto payload = std::make_shared<std::string>(msg.serialize());
-    do_send(payload);
+    auto payload = std::make_shared<std::string>(msg.serialize());  //we serialize the msg first into a JSON string as bytes are sent over networks not cpp objects and the serialized string is stored in a shared_ptr so it remains alive until the asynchronous write operation finishes, since async_write() returns immediately while the data is still being sent in the background
+    do_send(payload);                                               //then we send the serialized messsage to the server
 }
 
-void Client::do_resolve(const std::string& host, const std::string& port)
+void Client::do_resolve(const std::string& host, const std::string& port)       
 {
-    resolver_.async_resolve(
+    resolver_.async_resolve(    //built in asio method, the resolver asks the OS to translate the hostname [NO CONNECTION IS MADE YET]
         host, port,
-        [this](boost::system::error_code ec, tcp::resolver::results_type endpoints)
+        [this](boost::system::error_code ec, tcp::resolver::results_type endpoints)     //endpoints is the result of the translation, for websites there may be several possible IP addresses, so we store them all in endpoints
         {
             if (!ec)
-                do_connect(endpoints);
+                do_connect(endpoints);  //if there is no error then we establish the connection, this is where the connection starts
             else
                 std::cerr << "Resolve error: " << ec.message() << '\n';
         });

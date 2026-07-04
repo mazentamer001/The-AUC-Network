@@ -1,32 +1,66 @@
-#ifndef SERVER_H
-#define SERVER_H
-
-#include <memory>
-#include <vector>
-#include <mutex>
-#include <iostream>
+#pragma once
 #include <boost/asio.hpp>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 #include "Message.h"
 
 using boost::asio::ip::tcp;
 
-class Session;  // forward declare — Server and Session refer to each other
+class Session;
+class Dispatcher;
 
-class Server {
+// ─────────────────────────────────────────────────────────────────────────────
+//  Server
+//  Responsibilities:
+//    - Own the tcp::acceptor, loop async_accept
+//    - Spawn a Session per connection, hand it the Dispatcher
+//    - Track live sessions (weak_ptr — sessions own themselves)
+//    - Provide routing: broadcast / sendToRoom / sendTo(userId)
+//    - Allow AuthService to register a userId → Session mapping after login
+// ─────────────────────────────────────────────────────────────────────────────
+class Server
+{
+public:
+    Server(boost::asio::io_context& io,
+           unsigned short            port,
+           Dispatcher&               dispatcher);
+
+    // ── routing API (called by services) ───────────────────────────────────
+    // Send to every connected session except optional exclude
+    void broadcast(const Message& msg,
+                   std::shared_ptr<Session> exclude = nullptr);
+
+    // Send to every session in a specific room except optional exclude
+    void sendToRoom(const std::string&       roomId,
+                    const Message&           msg,
+                    std::shared_ptr<Session> exclude = nullptr);
+
+    // Send to one specific authenticated user
+    void sendTo(const std::string& userId, const Message& msg);
+
+    // ── session registry (called by Session / AuthService) ─────────────────
+    void addSession(std::shared_ptr<Session> session);
+    void registerUser(const std::string& userId,
+                      std::shared_ptr<Session> session);
+    void unregisterUser(const std::string& userId);
+
 private:
-    tcp::acceptor                        acceptor_;
-    std::vector<std::weak_ptr<Session>>  sessions_;   // ← weak so we don't keep dead sessions alive
-    std::mutex                           sessionsMutex_;  // ← do_accept and broadcast run on the same
-                                                          //   io thread but good habit for later
-
     void do_accept();
 
-public:
-    Server(boost::asio::io_context&, unsigned short);
+    // Removes expired weak_ptrs — call while holding sessionsMutex_
+    void sweep();
 
-    void broadcast(const Message& msg,
-                   std::shared_ptr<Session> exclude = nullptr);  // ← exclude the sender
-    void addSession(std::shared_ptr<Session> session);
+    tcp::acceptor    acceptor_;
+    Dispatcher&      dispatcher_;
+
+    std::mutex       sessionsMutex_;
+
+    // All live sessions (weak so Session lifetime is self-managed)
+    std::vector<std::weak_ptr<Session>> sessions_;
+
+    // userId → session for direct routing after authentication
+    std::unordered_map<std::string, std::weak_ptr<Session>> userMap_;
 };
-
-#endif
