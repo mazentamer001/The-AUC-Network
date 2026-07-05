@@ -5,7 +5,7 @@
 class Session;
 class Server;
 
-// ── forward-declare all services ───────────────────────────────────────────
+//-->forward-declare all services
 class AuthService;
 class RegistrationService;
 class ProfileService;
@@ -14,7 +14,7 @@ class MarketplaceService;
 class ForumService;
 class FileStorageService;
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  Dispatcher
 //  Responsibilities:
 //    - Receive every deserialized Message from Session::do_read()
@@ -23,7 +23,9 @@ class FileStorageService;
 //    - Send back an ERROR message for unknown / unauthorized requests
 //
 //  Knows nothing about sockets or bytes — pure message routing.
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 class Dispatcher
 {
 public:

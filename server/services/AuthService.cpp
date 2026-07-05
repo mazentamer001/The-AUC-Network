@@ -1,7 +1,7 @@
 #include "AuthService.h"
 #include "InMemoryStore.h"
 #include "UserRecord.h"
-#include "../shared/AuthToken.h"
+#include "AuthToken.h"
 #include "Server.h"
 #include "Session.h"
 #include <chrono>

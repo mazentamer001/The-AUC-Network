@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <iostream>
 
-// ─────────────────────────────────────────────────────────────────────────────
+//constructor we initialize the acceptor which accepts connection and the dispatcher which routes messages
 Server::Server(boost::asio::io_context& io,
                unsigned short            port,
                Dispatcher&               dispatcher)
@@ -15,7 +15,7 @@ Server::Server(boost::asio::io_context& io,
     do_accept();
 }
 
-// ── accept loop ───────────────────────────────────────────────────────────────
+//accept loop
 void Server::do_accept()
 {
     acceptor_.async_accept(
@@ -23,8 +23,7 @@ void Server::do_accept()
         {
             if (!ec)
             {
-                auto session = std::make_shared<Session>(
-                    std::move(socket), *this, dispatcher_);
+                auto session = std::make_shared<Session>(std::move(socket), *this, dispatcher_);
                 addSession(session);
                 session->start();
             }
@@ -32,19 +31,19 @@ void Server::do_accept()
             {
                 std::cerr << "Accept error: " << ec.message() << std::endl;
             }
-            do_accept(); // always loop
+            do_accept(); //always loop, always look for connections
         });
 }
 
-// ── session registry ──────────────────────────────────────────────────────────
+//when a new client connects, the server creates a Session object for that client
 void Server::addSession(std::shared_ptr<Session> session)
 {
-    std::lock_guard<std::mutex> lock(sessionsMutex_);
-    sessions_.push_back(session); // stored as weak_ptr implicitly
+    std::lock_guard<std::mutex> lock(sessionsMutex_);   //Mutex is a lock that prevents data races so no 2 threads can overwrite data in the same time
+    sessions_.push_back(session);
 }
 
-void Server::registerUser(const std::string& userId,
-                           std::shared_ptr<Session> session)
+//------ instead of just storing all sessions, it associates a user ID with a session ------
+void Server::registerUser(const std::string& userId, std::shared_ptr<Session> session)
 {
     std::lock_guard<std::mutex> lock(sessionsMutex_);
     userMap_[userId] = session;
@@ -57,33 +56,34 @@ void Server::unregisterUser(const std::string& userId)
     userMap_.erase(userId);
     std::cout << "User unregistered: " << userId << std::endl;
 }
+//--------------------------------------------------------------------------------------------
 
-// ── sweep dead sessions ───────────────────────────────────────────────────────
-// Must be called while holding sessionsMutex_
+//sweep dead sessions
+//removes every weak pointer that points to a destroyed session.
+///a weak pointer is like the shared pointer but it doesnt own the object (doesnt know how to keep it alive)
 void Server::sweep()
 {
     sessions_.erase(
         std::remove_if(sessions_.begin(), sessions_.end(),
-            [](const std::weak_ptr<Session>& w) { return w.expired(); }),
+            [](const std::weak_ptr<Session>& w) { return w.expired(); }),  //expired returns true when the Session is dead
         sessions_.end());
 }
 
-// ── routing ───────────────────────────────────────────────────────────────────
+//this takes the message to send and sends it to everyone but the sender
 void Server::broadcast(const Message& msg, std::shared_ptr<Session> exclude)
 {
-    std::lock_guard<std::mutex> lock(sessionsMutex_);
-    sweep();
-    for (auto& weak : sessions_)
+    std::lock_guard<std::mutex> lock(sessionsMutex_);   //lock to prevent data races
+    sweep();                                            //remove dead sessions as its meaningless to send to them
+    for (auto& weak : sessions_)                        //loop over sessions
     {
-        if (auto s = weak.lock())
+        if (auto s = weak.lock())                       //creates a shared pointer from a weak pointer and since we just used sweep() this should normally return true as the object exists
             if (s != exclude)
                 s->send(msg);
     }
 }
 
-void Server::sendToRoom(const std::string&       roomId,
-                         const Message&           msg,
-                         std::shared_ptr<Session> exclude)
+//this does the exact same as broadcasting this should change to send to a specific room only
+void Server::sendToRoom(const std::string& roomId, const Message& msg, std::shared_ptr<Session> exclude)
 {
     std::lock_guard<std::mutex> lock(sessionsMutex_);
     sweep();
@@ -91,12 +91,13 @@ void Server::sendToRoom(const std::string&       roomId,
     {
         if (auto s = weak.lock())
             // Session exposes its roomId once we add room tracking (next step)
-            // For now fall back to broadcast within the room filter
+            //this should not send to everyone (like broadcast) it should send to everyone within a room
             if (s != exclude)
                 s->send(msg);   // TODO: filter by s->roomId() == roomId
     }
 }
 
+//this sends to a specific user
 void Server::sendTo(const std::string& userId, const Message& msg)
 {
     std::lock_guard<std::mutex> lock(sessionsMutex_);

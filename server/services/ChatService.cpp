@@ -217,6 +217,6 @@ void ChatService::sendError(const std::string& reason, std::shared_ptr<Session> 
 
 void ChatService::sendOk(const std::string& text, std::shared_ptr<Session> sender)
 {
-    Message m; m.type = MessageType::AUTH_RESPONSE; m.text = text;
+    Message m; m.type = MessageType::PRESENCE; m.text = text;
     sender->send(m);
 }

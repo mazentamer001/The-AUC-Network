@@ -25,6 +25,11 @@ Dispatcher::Dispatcher(AuthService&         auth,
 
 void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
 {
+    std::cout << "Dispatcher received type: " 
+              << Message::typeToString(msg.type) 
+              << " (raw string from client: " << msg.role << ")" 
+              << std::endl;
+
     // ── no token required ──────────────────────────────────────────────────
     switch (msg.type)
     {
@@ -83,6 +88,10 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
         forum_.handleFaq(msg, sender);             break;
     case MessageType::QA_GET_ALL:
         forum_.handleGetAll(msg, sender);          break;
+    case MessageType::FORUM_UPVOTE:
+        forum_.handleVote(msg, sender);          break;
+    case MessageType::FORUM_DOWNVOTE:
+        forum_.handleVote(msg, sender);          break;
     case MessageType::QA_GET_ONE:
         forum_.handleGetOne(msg, sender);          break;
 

@@ -329,3 +329,56 @@ bool InMemoryStore::flagFile(const std::string& fileId, const std::string& reaso
     it->second.flagReason = reason;
     return true;
 }
+
+bool InMemoryStore::voteQuestion(const std::string& questionId,
+                                  const std::string& userId, bool upvote)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = questions_.find(questionId);
+    if (it == questions_.end()) return false;
+    auto& q = it->second;
+
+    // remove opposite vote first
+    if (upvote) {
+        if (q.upvoters.count(userId))   return false; // already upvoted
+        q.downvoters.erase(userId);
+        if (q.downvotes > 0) q.downvotes--;
+        q.upvoters.insert(userId);
+        q.upvotes++;
+    } else {
+        if (q.downvoters.count(userId)) return false; // already downvoted
+        q.upvoters.erase(userId);
+        if (q.upvotes > 0) q.upvotes--;
+        q.downvoters.insert(userId);
+        q.downvotes++;
+    }
+    return true;
+}
+
+bool InMemoryStore::voteAnswer(const std::string& questionId,
+                                const std::string& answerId,
+                                const std::string& userId, bool upvote)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = questions_.find(questionId);
+    if (it == questions_.end()) return false;
+    for (auto& a : it->second.answers) {
+        if (a.answerId == answerId) {
+            if (upvote) {
+                if (a.upvoters.count(userId))   return false;
+                a.downvoters.erase(userId);
+                if (a.downvotes > 0) a.downvotes--;
+                a.upvoters.insert(userId);
+                a.upvotes++;
+            } else {
+                if (a.downvoters.count(userId)) return false;
+                a.upvoters.erase(userId);
+                if (a.upvotes > 0) a.upvotes--;
+                a.downvoters.insert(userId);
+                a.downvotes++;
+            }
+            return true;
+        }
+    }
+    return false;
+}

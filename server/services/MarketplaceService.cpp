@@ -38,9 +38,14 @@ void MarketplaceService::handlePost(const Message& msg, std::shared_ptr<Session>
               << " by " << listing.sellerUsername << "\n";
 
     Message resp;
-    resp.type      = MessageType::MARKET_POST;
-    resp.text      = "Listing posted: " + listing.title;
-    resp.parentId  = listing.listingId;   // return listingId to client
+    resp.type            = MessageType::MARKET_POST;
+    resp.parentId        = listing.listingId;
+    resp.title           = listing.title;
+    resp.price           = listing.price;
+    resp.text            = listing.description;
+    resp.mediaUrl        = listing.mediaUrl;
+    resp.sender.username = listing.sellerUsername;
+    resp.sender.userId   = listing.sellerUserId;
     sender->send(resp);
 }
 

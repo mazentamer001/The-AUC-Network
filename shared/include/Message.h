@@ -19,7 +19,9 @@ enum class MessageType {
     // Forum
     QA_QUESTION, QA_ANSWER, QA_FAQ, QA_GET_ALL, QA_GET_ONE,
     // System
-    ERROR, UNKNOWN
+    ERROR, UNKNOWN,
+    // Forum votes
+    FORUM_UPVOTE, FORUM_DOWNVOTE
 };
 
 struct SenderInfo {
@@ -60,3 +62,4 @@ struct Message {
 };
 
 #endif
+// note: FORUM_UPVOTE and FORUM_DOWNVOTE added below UNKNOWN

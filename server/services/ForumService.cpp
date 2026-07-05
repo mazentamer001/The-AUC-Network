@@ -169,3 +169,48 @@ void ForumService::sendOk(const std::string& text, std::shared_ptr<Session> send
     Message m; m.type = MessageType::QA_FAQ; m.text = text;
     sender->send(m);
 }
+
+void ForumService::handleVote(const Message& msg, std::shared_ptr<Session> sender)
+{
+    if (msg.parentId.empty()) { sendError("parentId required", sender); return; }
+    if (msg.sender.userId.empty()) { sendError("Not authenticated", sender); return; }
+
+    bool upvote = (msg.role == "UP");
+    bool success = false;
+
+    if (msg.filename.empty()) {
+        success = store_.voteQuestion(msg.parentId, msg.sender.userId, upvote);
+        if (!success) { sendError("Already voted on this question", sender); return; }
+    } else {
+        success = store_.voteAnswer(msg.parentId, msg.filename, msg.sender.userId, upvote);
+        if (!success) { sendError("Already voted on this answer", sender); return; }
+    }
+
+    // send back updated counts
+    auto qOpt = store_.findQuestion(msg.parentId);
+    if (!qOpt) return;
+
+    if (msg.filename.empty()) {
+        // question vote — send updated question
+        Message resp;
+        resp.type      = MessageType::QA_QUESTION;
+        resp.parentId  = qOpt->questionId;
+        resp.text      = "vote_update";
+        resp.role      = std::to_string(qOpt->upvotes) + ":" + std::to_string(qOpt->downvotes);
+        sender->send(resp);
+    } else {
+        // answer vote — find updated answer
+        for (auto& a : qOpt->answers) {
+            if (a.answerId == msg.filename) {
+                Message resp;
+                resp.type      = MessageType::QA_ANSWER;
+                resp.parentId  = msg.parentId;
+                resp.filename  = a.answerId;
+                resp.text      = "vote_update";
+                resp.role      = std::to_string(a.upvotes) + ":" + std::to_string(a.downvotes);
+                sender->send(resp);
+                break;
+            }
+        }
+    }
+}

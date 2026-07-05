@@ -9,7 +9,7 @@
 #include "models/Listing.h"
 #include "models/ForumPost.h"
 #include "models/FileRecord.h"
-#include "../shared/AuthToken.h"
+#include "AuthToken.h"
 
 class InMemoryStore
 {
@@ -58,6 +58,11 @@ public:
                                                const std::string& requestingUserId);
     std::vector<ForumQuestion>   getAllQuestions();
     std::vector<ForumAnswer>     getFaqAnswers(const std::string& questionId);
+    bool                         voteQuestion(const std::string& questionId,
+                                            const std::string& userId, bool upvote);
+    bool                         voteAnswer(const std::string& questionId,
+                                            const std::string& answerId,
+                                            const std::string& userId, bool upvote);
 
     // ── files ─────────────────────────────────────────────────────────────
     bool                       addFile(const FileRecord& file);

@@ -31,6 +31,8 @@ std::string Message::typeToString(MessageType t)
     case MessageType::QA_QUESTION:      return "QA_QUESTION";
     case MessageType::QA_ANSWER:        return "QA_ANSWER";
     case MessageType::QA_FAQ:           return "QA_FAQ";
+    case MessageType::FORUM_UPVOTE:    return "FORUM_UPVOTE";
+    case MessageType::FORUM_DOWNVOTE:  return "FORUM_DOWNVOTE";
     case MessageType::QA_GET_ALL:       return "QA_GET_ALL";
     case MessageType::QA_GET_ONE:       return "QA_GET_ONE";
     case MessageType::ERROR:            return "ERROR";
@@ -64,9 +66,13 @@ MessageType Message::stringToType(const std::string& s)
     if (s == "QA_QUESTION")     return MessageType::QA_QUESTION;
     if (s == "QA_ANSWER")       return MessageType::QA_ANSWER;
     if (s == "QA_FAQ")          return MessageType::QA_FAQ;
+    if (s == "FORUM_UPVOTE")   return MessageType::FORUM_UPVOTE;
+    if (s == "FORUM_DOWNVOTE")  return MessageType::FORUM_DOWNVOTE;
     if (s == "QA_GET_ALL")      return MessageType::QA_GET_ALL;
     if (s == "QA_GET_ONE")      return MessageType::QA_GET_ONE;
     if (s == "ERROR")           return MessageType::ERROR;
+    if (s == "FORUM_UPVOTE")    return MessageType::FORUM_UPVOTE;
+    if (s == "FORUM_DOWNVOTE")  return MessageType::FORUM_DOWNVOTE;
     return MessageType::UNKNOWN;
 }
 
