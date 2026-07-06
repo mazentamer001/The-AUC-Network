@@ -3,6 +3,7 @@
 #include <QStackedWidget>
 #include <QMap>
 #include <QVBoxLayout>
+#include <QSet>    
 #include "Message.h"
 
 class QLabel;
@@ -27,7 +28,7 @@ signals:
     void upvoteClicked  (const QString& id);
     void downvoteClicked(const QString& id);
 protected:
-    void mousePressEvent(QMouseEvent* event) override; 
+    void mousePressEvent(QMouseEvent* event) override;  
 private:
     QString  id_;
     QLabel*  votesLabel_;
@@ -82,6 +83,7 @@ public:
                    int upvotes, int downvotes, bool isFaq);
     void clearAnswers();
     void setUser(const QString& u) { username_ = u; }
+    void updateAnswerVotes(const QString& answerId, int up, int down);
     QString currentQuestionId() const { return questionId_; }
 signals:
     void backClicked();
@@ -156,6 +158,7 @@ private:
     };
     QMap<QString, QuestionData>   questions_;
     QMap<QString, QuestionCard*>  cards_;
+    QSet<QString>                 knownAnswerIds_; // prevents double-counting
 
     QString displayName_, userId_, token_;
 };

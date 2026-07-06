@@ -43,7 +43,7 @@ public:
     void setToken(const QString& t)       { token_ = t; }
     void setUser (const QString& u)       { username_ = u; }
 private:
-    QLabel*    fileLabel_;
+    QLabel* fileLabel_;
     QLineEdit* reasonInput_;
     QTextEdit* detailsInput_;
     QLineEdit* categoryInput_;
@@ -59,11 +59,11 @@ public:
 signals:
     void backClicked();
 private:
-    QLabel*    iconLabel_;
-    QLabel*    nameLabel_;
-    QLabel*    urlLabel_;
+    QLabel* iconLabel_;
+    QLabel* nameLabel_;
+    QLabel* urlLabel_;
     QTextEdit* contentView_;
-    QLabel*    previewLabel_;
+    QLabel* previewLabel_;
 };
 
 // ── files panel ───────────────────────────────────────────────────────────────
@@ -97,13 +97,13 @@ private:
     void showBrowse  ();
 
     QStackedWidget* stack_;          // 0=browse, 1=view, 2=report
-    QVBoxLayout*    listLayout_;
-    QWidget*        listWidget_;
-    QScrollArea*    scrollArea_;
-    QLineEdit*      searchBar_;
-    QLabel*         emptyLabel_;
-    ViewPanel*      viewPanel_;
-    ReportPanel*    reportPanel_;
+    QVBoxLayout* listLayout_;
+    QWidget* listWidget_;
+    QScrollArea* scrollArea_;
+    QLineEdit* searchBar_;
+    QLabel* emptyLabel_;
+    ViewPanel* viewPanel_;
+    ReportPanel* reportPanel_;
 
     struct FileData {
         QString id, filename, uploader, size, timestamp, url, content;
@@ -113,4 +113,3 @@ private:
     QString displayName_, userId_, token_;
     QMap<QString, QString> pendingContent_; // filename → base64, cached on upload
 };
-// note: pendingContent_ maps filename → base64 content for files we just uploaded

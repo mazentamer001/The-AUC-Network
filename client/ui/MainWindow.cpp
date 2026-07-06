@@ -85,7 +85,8 @@ void MainWindow::onMessage(const Message& msg)
             token_       = QString::fromStdString(msg.token);
             userId_      = QString::fromStdString(msg.sender.userId);
             displayName_ = QString::fromStdString(msg.displayName);
-            mainShell_->setCurrentUser(displayName_, userId_, token_);
+            username_    = QString::fromStdString(msg.sender.username);
+            mainShell_->setCurrentUser(displayName_, userId_, username_, token_);
             showShell();
         } else if (!token_.isEmpty()) {
             // already logged in — generic server confirmation, ignore silently

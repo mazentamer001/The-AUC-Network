@@ -13,60 +13,71 @@
 #include <QTimer>
 #include <QByteArray>
 #include <QComboBox>
-#include <QGraphicsDropShadowEffect>
 
-static const char* ACCENT   = "#6366f1";
-static const char* ACCENT2  = "#818cf8";
-static const char* TEXT_PRI = "#f1f5f9";
-static const char* TEXT_SEC = "#94a3b8";
-static const char* BG_DEEP  = "#0a0f1e";
-static const char* BG_PANEL = "#0f172a";
-static const char* BG_CARD  = "#1e293b";
-static const char* BG_INPUT = "#334155";
-static const char* DANGER   = "#ef4444";
+// Cohesive Label Color Palette
+static const char* BG_MAIN       = "#D4C5B6"; // Warm Sand / Parchment
+static const char* BG_ALT        = "#C9BBAA"; // Slightly deeper sand for hover/contrast
+static const char* TEXT_MAIN     = "#0F0F0F"; // Ink Black
+static const char* TEXT_DIM      = "#555555"; // Faded typewriter ink
+static const char* ACCENT_ORANGE = "#E65C40"; // Stamp Red-Orange
+static const char* ACCENT_RED    = "#D03A2F"; // Danger Red
 
 static QString inputStyle() {
-    return QString("QLineEdit{"
-        "background:%1;color:%2;border:1px solid #1e293b;"
-        "border-radius:8px;padding:8px 12px;font-size:13px;}"
-        "QLineEdit:focus{border:1px solid %3;}").arg(BG_INPUT,TEXT_PRI,ACCENT2);
+    return QString(
+        "QLineEdit {"
+        "  background: transparent; color: %1; border: 1px solid %1; border-radius: 0px;"
+        "  padding: 8px 12px; font-size: 12px; font-family: monospace;"
+        "}"
+        "QLineEdit:focus { background: #FFFDFB; border: 1px solid %2; }"
+    ).arg(TEXT_MAIN, ACCENT_ORANGE);
 }
 
 static QString textAreaStyle() {
-    return QString("QTextEdit{"
-        "background:%1;color:%2;border:1px solid #1e293b;"
-        "border-radius:8px;padding:8px;font-size:13px;}"
-        "QTextEdit:focus{border:1px solid %3;}").arg(BG_INPUT,TEXT_PRI,ACCENT2);
+    return QString(
+        "QTextEdit {"
+        "  background: transparent; color: %1; border: 1px solid %1; border-radius: 0px;"
+        "  padding: 8px 12px; font-size: 12px; font-family: monospace;"
+        "}"
+        "QTextEdit:focus { background: #FFFDFB; border: 1px solid %2; }"
+    ).arg(TEXT_MAIN, ACCENT_ORANGE);
 }
 
-static QString btnStyle(const char* bg, const char* hover) {
-    return QString("QPushButton{background:%1;color:white;border:none;"
-        "border-radius:6px;padding:5px 12px;font-size:12px;font-weight:bold;}"
-        "QPushButton:hover{background:%2;}").arg(bg,hover);
+static QString btnStyle(const char* bg, const char* textCol, const char* hoverBg, const char* hoverTextCol) {
+    return QString(
+        "QPushButton {"
+        "  background: %1; color: %2; border: 1px solid %1; border-radius: 0px;"
+        "  padding: 5px 12px; font-size: 11px; font-weight: bold; letter-spacing: 1px;"
+        "}"
+        "QPushButton:hover { background: %3; color: %4; border: 1px solid %3; }"
+    ).arg(bg, textCol, hoverBg, hoverTextCol);
 }
 
 static QString msgBoxStyle() {
-    return QString("QMessageBox{background:%1;color:%2;}"
-        "QMessageBox QLabel{color:%2;}"
-        "QMessageBox QPushButton{background:%3;color:white;border:none;"
-        "border-radius:6px;padding:6px 18px;}"
-        "QMessageBox QPushButton:hover{background:%4;}")
-        .arg(BG_PANEL,TEXT_PRI,ACCENT,ACCENT2);
+    return QString(
+        "QMessageBox { background: %1; color: %2; border: 1px solid %2; border-radius: 0px; }"
+        "QMessageBox QLabel { color: %2; font-family: monospace; font-size: 13px; }"
+        "QMessageBox QPushButton {"
+        "  background: %2; color: %1; border: none; border-radius: 0px;"
+        "  padding: 6px 18px; font-size: 12px; font-weight: bold; letter-spacing: 2px;"
+        "}"
+        "QMessageBox QPushButton:hover { background: %3; color: %2; }"
+    ).arg(BG_MAIN, TEXT_MAIN, ACCENT_ORANGE);
 }
 
+// Brutalist ASCII tags instead of emojis to fit the typewriter/ledger aesthetic
 static QString fileIcon(const QString& name) {
     QString ext = QFileInfo(name).suffix().toLower();
-    if (ext=="pdf")                                     return "📄";
-    if (ext=="png"||ext=="jpg"||ext=="jpeg"||ext=="gif")return "🖼";
-    if (ext=="mp4"||ext=="avi"||ext=="mov")             return "🎬";
-    if (ext=="mp3"||ext=="wav")                         return "🎵";
-    if (ext=="zip"||ext=="rar")                         return "🗜";
-    if (ext=="doc"||ext=="docx")                        return "📝";
-    if (ext=="ppt"||ext=="pptx")                        return "📊";
-    if (ext=="xls"||ext=="xlsx")                        return "📈";
+    if (ext=="pdf")                                     return "[ PDF ]";
+    if (ext=="png"||ext=="jpg"||ext=="jpeg"||ext=="gif")return "[ IMG ]";
+    if (ext=="mp4"||ext=="avi"||ext=="mov")             return "[ VID ]";
+    if (ext=="mp3"||ext=="wav")                         return "[ AUD ]";
+    if (ext=="zip"||ext=="rar")                         return "[ ZIP ]";
+    if (ext=="doc"||ext=="docx")                        return "[ DOC ]";
+    if (ext=="ppt"||ext=="pptx")                        return "[ PPT ]";
+    if (ext=="xls"||ext=="xlsx")                        return "[ XLS ]";
     if (ext=="cpp"||ext=="h"||ext=="py"||ext=="js"
-       ||ext=="txt"||ext=="md")                         return "💻";
-    return "📁";
+       ||ext=="txt"||ext=="md")                         return "[ SRC ]";
+    return "[ BIN ]";
 }
 
 static bool isTextFile(const QString& name) {
@@ -84,48 +95,52 @@ FileRow::FileRow(const QString& id, const QString& filename,
                  const QString& content, QWidget* parent)
     : QWidget(parent), id_(id), url_(url), filename_(filename), content_(content)
 {
-    setFixedHeight(56);
+    setFixedHeight(50); // Slightly tighter ledger look
     setAttribute(Qt::WA_StyledBackground, true);
     setStyleSheet(QString(
-        "FileRow{background:%1;border-radius:8px;border:1px solid #1e293b;}"
-        "FileRow:hover{background:#1a2540;}").arg(BG_CARD));
+        "FileRow { background: transparent; border-bottom: 1px solid %1; border-top: none; border-left: none; border-right: none; }"
+        "FileRow:hover { background: %2; }"
+    ).arg(TEXT_MAIN, BG_ALT));
 
     auto* l = new QHBoxLayout(this);
-    l->setContentsMargins(14,0,14,0);
+    l->setContentsMargins(14, 0, 14, 0);
     l->setSpacing(14);
 
     auto* icon = new QLabel(fileIcon(filename));
-    icon->setFixedSize(32,32);
+    icon->setFixedSize(50, 32);
     icon->setAlignment(Qt::AlignCenter);
     icon->setStyleSheet(QString(
-        "background:%1;border-radius:6px;font-size:16px;").arg(BG_DEEP));
+        "background: %1; color: %2; border: 1px solid %1; font-family: monospace; font-size: 11px; font-weight: bold;"
+    ).arg(TEXT_MAIN, BG_MAIN));
 
-    auto* name = new QLabel(filename);
-    name->setStyleSheet(QString("color:%1;font-size:13px;font-weight:600;"
-        "background:transparent;").arg(TEXT_PRI));
+    auto* name = new QLabel(filename.toUpper());
+    name->setStyleSheet(QString("border: none; color: %1; font-size: 12px; font-weight: 800; font-family: monospace; background: transparent;").arg(TEXT_MAIN));
     name->setMinimumWidth(160);
 
-    auto* upl = new QLabel(uploader);
-    upl->setStyleSheet(QString("color:%1;font-size:12px;background:transparent;").arg(TEXT_SEC));
+    auto* upl = new QLabel(uploader.toUpper());
+    upl->setStyleSheet(QString("border: none; color: %1; font-size: 11px; font-family: monospace; background: transparent;").arg(TEXT_DIM));
     upl->setMinimumWidth(110);
 
     auto* sz = new QLabel(size);
-    sz->setStyleSheet(QString("color:%1;font-size:12px;background:transparent;").arg(TEXT_SEC));
+    sz->setStyleSheet(QString("border: none; color: %1; font-size: 11px; font-family: monospace; background: transparent;").arg(TEXT_DIM));
     sz->setFixedWidth(76);
 
     auto* dt = new QLabel(timestamp.left(10));
-    dt->setStyleSheet(QString("color:%1;font-size:12px;background:transparent;").arg(TEXT_SEC));
+    dt->setStyleSheet(QString("border: none; color: %1; font-size: 11px; font-family: monospace; background: transparent;").arg(TEXT_DIM));
     dt->setFixedWidth(90);
 
-    auto* btnView     = new QPushButton("View");
-    auto* btnDownload = new QPushButton("Download");
-    auto* btnReport   = new QPushButton("Report");
+    auto* btnView     = new QPushButton("VIEW");
+    auto* btnDownload = new QPushButton("FETCH");
+    auto* btnReport   = new QPushButton("FLAG");
+    
     btnView->setFixedHeight(26);
     btnDownload->setFixedHeight(26);
     btnReport->setFixedHeight(26);
-    btnView->setStyleSheet(btnStyle(ACCENT,ACCENT2));
-    btnDownload->setStyleSheet(btnStyle("#1d4ed8","#2563eb"));
-    btnReport->setStyleSheet(btnStyle("#374151","#4b5563"));
+    
+    // Style: bg, textCol, hoverBg, hoverTextCol
+    btnView->setStyleSheet(btnStyle("transparent", TEXT_MAIN, TEXT_MAIN, BG_MAIN));
+    btnDownload->setStyleSheet(btnStyle(TEXT_MAIN, BG_MAIN, ACCENT_ORANGE, TEXT_MAIN));
+    btnReport->setStyleSheet(btnStyle("transparent", TEXT_DIM, ACCENT_RED, BG_MAIN));
 
     l->addWidget(icon);
     l->addWidget(name, 2);
@@ -150,52 +165,50 @@ FileRow::FileRow(const QString& id, const QString& filename,
 ViewPanel::ViewPanel(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    setStyleSheet(QString("background: %1;").arg(BG_MAIN));
 
     auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(32,24,32,24);
+    root->setContentsMargins(32, 24, 32, 24);
     root->setSpacing(16);
 
-    // back button
-    auto* btnBack = new QPushButton("← Back to Files");
+    auto* btnBack = new QPushButton("← RETURN TO INDEX");
     btnBack->setFlat(true);
-    btnBack->setStyleSheet(QString("color:%1;font-size:13px;background:transparent;").arg(TEXT_SEC));
-    btnBack->setFixedWidth(160);
+    btnBack->setStyleSheet(QString(
+        "QPushButton { color: %1; font-size: 12px; font-weight: bold; letter-spacing: 2px; background: transparent; border: none; text-align: left; }"
+        "QPushButton:hover { color: %2; }"
+    ).arg(TEXT_MAIN, ACCENT_ORANGE));
+    btnBack->setFixedWidth(200);
 
-    // header
     iconLabel_ = new QLabel;
     iconLabel_->setAlignment(Qt::AlignCenter);
-    iconLabel_->setStyleSheet("font-size:52px;background:transparent;");
+    iconLabel_->setStyleSheet(QString("color: %1; font-size: 24px; font-family: monospace; font-weight: 800; background: transparent;").arg(TEXT_MAIN));
 
     nameLabel_ = new QLabel;
     nameLabel_->setAlignment(Qt::AlignCenter);
-    nameLabel_->setStyleSheet(QString(
-        "color:%1;font-size:18px;font-weight:bold;background:transparent;").arg(TEXT_PRI));
+    nameLabel_->setStyleSheet(QString("color: %1; font-size: 18px; font-weight: 900; letter-spacing: 2px; background: transparent;").arg(TEXT_MAIN));
 
     urlLabel_ = new QLabel;
     urlLabel_->setAlignment(Qt::AlignCenter);
-    urlLabel_->setStyleSheet(QString("color:%1;font-size:11px;background:transparent;").arg(TEXT_SEC));
+    urlLabel_->setStyleSheet(QString("color: %1; font-size: 11px; font-family: monospace; background: transparent;").arg(TEXT_DIM));
 
-    // content view
     contentView_ = new QTextEdit;
     contentView_->setReadOnly(true);
     contentView_->setStyleSheet(QString(
-        "QTextEdit{background:%1;color:%2;border:1px solid #1e293b;"
-        "border-radius:8px;padding:12px;font-family:monospace;font-size:13px;}")
-        .arg(BG_PANEL, TEXT_PRI));
+        "QTextEdit { background: transparent; color: %1; border: 1px solid %1; border-radius: 0px; padding: 16px; font-family: monospace; font-size: 13px; line-height: 1.5; }"
+    ).arg(TEXT_MAIN));
 
-    // image/binary placeholder
-    previewLabel_ = new QLabel("Binary file — download to view");
+    previewLabel_ = new QLabel("BINARY PAYLOAD — FETCH TO EXAMINE");
     previewLabel_->setAlignment(Qt::AlignCenter);
     previewLabel_->setStyleSheet(QString(
-        "color:%1;font-size:14px;background:%2;border-radius:8px;padding:40px;")
-        .arg(TEXT_SEC, BG_PANEL));
+        "color: %1; font-size: 14px; font-family: monospace; font-weight: bold; background: %2; border: 1px solid %1; padding: 40px;"
+    ).arg(TEXT_MAIN, BG_ALT));
 
     root->addWidget(btnBack, 0, Qt::AlignLeft);
-    root->addSpacing(4);
+    root->addSpacing(10);
     root->addWidget(iconLabel_);
     root->addWidget(nameLabel_);
     root->addWidget(urlLabel_);
+    root->addSpacing(10);
     root->addWidget(contentView_, 1);
     root->addWidget(previewLabel_, 1);
 
@@ -205,19 +218,17 @@ ViewPanel::ViewPanel(QWidget* parent) : QWidget(parent)
 void ViewPanel::load(const QString& filename, const QString& content, const QString& url)
 {
     iconLabel_->setText(fileIcon(filename));
-    nameLabel_->setText(filename);
-    urlLabel_->setText("Server: " + url);
+    nameLabel_->setText(filename.toUpper());
+    urlLabel_->setText("ORIGIN: " + url);
 
     if (isTextFile(filename) && !content.isEmpty()) {
-        // decode base64 and show as text
         QByteArray decoded = QByteArray::fromBase64(content.toUtf8());
         contentView_->setPlainText(QString::fromUtf8(decoded));
         contentView_->setVisible(true);
         previewLabel_->setVisible(false);
     } else {
         contentView_->setVisible(false);
-        previewLabel_->setText(fileIcon(filename) + "\n\n" + filename +
-                               "\n\nDownload to open this file.");
+        previewLabel_->setText(fileIcon(filename) + "\n\n" + filename.toUpper() + "\n\nFETCH REQUIRED TO EXAMINE THIS PAYLOAD.");
         previewLabel_->setVisible(true);
     }
 }
@@ -228,105 +239,103 @@ void ViewPanel::load(const QString& filename, const QString& content, const QStr
 ReportPanel::ReportPanel(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    setStyleSheet(QString("background: %1;").arg(BG_MAIN));
 
     auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(0,0,0,0);
+    root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
-    // card centred
     auto* outer = new QVBoxLayout;
-    outer->setContentsMargins(40,24,40,24);
+    outer->setContentsMargins(40, 24, 40, 24);
     outer->setAlignment(Qt::AlignTop);
 
-    auto* btnBack = new QPushButton("← Back to Files");
+    auto* btnBack = new QPushButton("← RETURN TO INDEX");
     btnBack->setFlat(true);
-    btnBack->setStyleSheet(QString("color:%1;font-size:13px;background:transparent;").arg(TEXT_SEC));
-    btnBack->setFixedWidth(160);
+    btnBack->setStyleSheet(QString(
+        "QPushButton { color: %1; font-size: 12px; font-weight: bold; letter-spacing: 2px; background: transparent; border: none; text-align: left; }"
+        "QPushButton:hover { color: %2; }"
+    ).arg(TEXT_MAIN, ACCENT_ORANGE));
+    btnBack->setFixedWidth(200);
 
     auto* card = new QWidget;
     card->setMaximumWidth(620);
-    card->setStyleSheet(QString("background:%1;border-radius:12px;").arg(BG_PANEL));
+    card->setStyleSheet(QString("background: transparent; border: 1px solid %1; border-radius: 0px;").arg(TEXT_MAIN));
+    
     auto* cardLayout = new QVBoxLayout(card);
-    cardLayout->setContentsMargins(32,28,32,28);
-    cardLayout->setSpacing(14);
+    cardLayout->setContentsMargins(40, 36, 40, 36);
+    cardLayout->setSpacing(16);
 
-    auto* title = new QLabel("Report File");
-    title->setStyleSheet(QString("color:%1;font-size:20px;font-weight:bold;").arg(TEXT_PRI));
+    auto* title = new QLabel("SUBMIT INFRACTION REPORT");
+    title->setStyleSheet(QString("border: none; color: %1; font-size: 18px; font-weight: 900; letter-spacing: 2px;").arg(TEXT_MAIN));
 
     fileLabel_ = new QLabel;
-    fileLabel_->setStyleSheet(QString("color:%1;font-size:13px;").arg(TEXT_SEC));
+    fileLabel_->setStyleSheet(QString("border: none; color: %1; font-size: 12px; font-family: monospace; font-weight: bold;").arg(TEXT_DIM));
 
     auto lbl = [](const QString& t) {
         auto* l = new QLabel(t);
-        l->setStyleSheet("color:#64748b;font-size:11px;font-weight:bold;letter-spacing:1px;");
+        l->setStyleSheet("border: none; color: #0F0F0F; font-size: 11px; font-weight: 800; letter-spacing: 2px;");
         return l;
     };
 
-    // category dropdown styled like input
-    auto* categoryLbl = lbl("CATEGORY");
+    auto* categoryLbl = lbl("VIOLATION CLASS");
     auto* category = new QComboBox;
-    category->addItems({"Inappropriate Content", "Copyright Violation",
-                        "Spam / Misleading", "Malware / Harmful", "Other"});
+    category->addItems({"INAPPROPRIATE CONTENT", "COPYRIGHT VIOLATION", "SPAM / MISLEADING", "MALWARE / HARMFUL", "OTHER"});
     category->setFixedHeight(42);
     category->setStyleSheet(QString(
-        "QComboBox{background:%1;color:%2;border:1px solid #1e293b;"
-        "border-radius:8px;padding:8px 12px;font-size:13px;}"
-        "QComboBox::drop-down{border:none;}"
-        "QComboBox QAbstractItemView{background:%1;color:%2;border:1px solid #1e293b;}")
-        .arg(BG_INPUT, TEXT_PRI));
+        "QComboBox { background: transparent; color: %1; border: 1px solid %1; border-radius: 0px; padding: 8px 12px; font-size: 12px; font-family: monospace; font-weight: bold; }"
+        "QComboBox::drop-down { border: none; }"
+        "QComboBox QAbstractItemView { background: %2; color: %1; border: 1px solid %1; selection-background-color: %1; selection-color: %2; }"
+    ).arg(TEXT_MAIN, BG_MAIN));
 
-    // reason
     reasonInput_ = new QLineEdit;
-    reasonInput_->setPlaceholderText("Brief reason...");
+    reasonInput_->setPlaceholderText("BRIEF SUMMARY...");
     reasonInput_->setFixedHeight(42);
     reasonInput_->setStyleSheet(inputStyle());
 
-    // details
     detailsInput_ = new QTextEdit;
-    detailsInput_->setPlaceholderText("Additional details (optional)...");
+    detailsInput_->setPlaceholderText("ADDITIONAL CONTEXT (OPTIONAL)...");
     detailsInput_->setFixedHeight(100);
     detailsInput_->setStyleSheet(textAreaStyle());
 
     auto* btnRow = new QHBoxLayout;
-    auto* btnCancel = new QPushButton("Cancel");
-    auto* btnSubmit = new QPushButton("Submit Report");
+    auto* btnCancel = new QPushButton("ABORT");
+    auto* btnSubmit = new QPushButton("FILE REPORT");
+    
     btnCancel->setFixedHeight(42);
     btnSubmit->setFixedHeight(42);
-    btnCancel->setStyleSheet(btnStyle("#374151","#4b5563"));
-    btnSubmit->setStyleSheet(btnStyle(DANGER,"#dc2626"));
+    
+    btnCancel->setStyleSheet(btnStyle("transparent", TEXT_MAIN, TEXT_MAIN, BG_MAIN));
+    btnSubmit->setStyleSheet(btnStyle(TEXT_MAIN, BG_MAIN, ACCENT_RED, BG_MAIN));
+    
     btnRow->addWidget(btnCancel);
     btnRow->addWidget(btnSubmit);
 
     cardLayout->addWidget(title);
     cardLayout->addWidget(fileLabel_);
-    cardLayout->addSpacing(8);
+    cardLayout->addSpacing(12);
     cardLayout->addWidget(categoryLbl);
     cardLayout->addWidget(category);
+    cardLayout->addSpacing(6);
     cardLayout->addWidget(lbl("REASON *"));
     cardLayout->addWidget(reasonInput_);
-    cardLayout->addWidget(lbl("DETAILS"));
-    cardLayout->addWidget(detailsInput_);
     cardLayout->addSpacing(6);
+    cardLayout->addWidget(lbl("CONTEXT LOG"));
+    cardLayout->addWidget(detailsInput_);
+    cardLayout->addSpacing(16);
     cardLayout->addLayout(btnRow);
 
     outer->addWidget(btnBack, 0, Qt::AlignLeft);
-    outer->addSpacing(12);
+    outer->addSpacing(16);
     outer->addWidget(card);
 
     root->addLayout(outer);
     root->addStretch();
 
-    // keep category value for submit
-    connect(category, &QComboBox::currentTextChanged, this, [this, category](){
-        // stored inline in onSubmit via capture
-    });
+    connect(category, &QComboBox::currentTextChanged, this, [this, category](){ });
 
-    // store category pointer for submit
     connect(btnSubmit, &QPushButton::clicked, this, [this, category](){
         if (reasonInput_->text().trimmed().isEmpty()) return;
-        QString fullReason = category->currentText() + " — " +
-                             reasonInput_->text().trimmed();
+        QString fullReason = category->currentText() + " — " + reasonInput_->text().trimmed();
         if (!detailsInput_->toPlainText().trimmed().isEmpty())
             fullReason += "\n" + detailsInput_->toPlainText().trimmed();
 
@@ -341,6 +350,7 @@ ReportPanel::ReportPanel(QWidget* parent) : QWidget(parent)
         reasonInput_->clear();
         detailsInput_->clear();
     });
+    
     connect(btnCancel, &QPushButton::clicked, this, &ReportPanel::cancelled);
     connect(btnBack,   &QPushButton::clicked, this, &ReportPanel::cancelled);
 }
@@ -348,7 +358,7 @@ ReportPanel::ReportPanel(QWidget* parent) : QWidget(parent)
 void ReportPanel::setFile(const QString& id, const QString& filename)
 {
     fileId_ = id;
-    fileLabel_->setText("File: " + filename);
+    fileLabel_->setText("TARGET: " + filename.toUpper());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -357,89 +367,94 @@ void ReportPanel::setFile(const QString& id, const QString& filename)
 FilesPanel::FilesPanel(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    setStyleSheet(QString("background: %1;").arg(BG_MAIN));
 
     stack_ = new QStackedWidget(this);
-    stack_->setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    stack_->setStyleSheet(QString("background: transparent; border: none;"));
 
     // ── browse page ───────────────────────────────────────────────────────
     auto* browsePage = new QWidget;
     browsePage->setAttribute(Qt::WA_StyledBackground, true);
-    browsePage->setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    browsePage->setStyleSheet(QString("background: transparent;"));
 
     auto* browseLayout = new QVBoxLayout(browsePage);
-    browseLayout->setContentsMargins(24,20,24,20);
-    browseLayout->setSpacing(14);
+    browseLayout->setContentsMargins(32, 28, 32, 28);
+    browseLayout->setSpacing(16);
 
-    // top bar
+    // TOP BAR
     auto* topBar = new QHBoxLayout;
-    auto* pageTitle = new QLabel("Files");
-    pageTitle->setStyleSheet(QString(
-        "color:%1;font-size:22px;font-weight:bold;background:transparent;").arg(TEXT_PRI));
+    auto* pageTitle = new QLabel("FILE REGISTRY");
+    pageTitle->setStyleSheet(QString("color: %1; font-size: 22px; font-weight: 900; letter-spacing: 3px; background: transparent;").arg(TEXT_MAIN));
 
     searchBar_ = new QLineEdit;
-    searchBar_->setPlaceholderText("🔍  Search files...");
-    searchBar_->setFixedHeight(38);
-    searchBar_->setMaximumWidth(280);
+    searchBar_->setPlaceholderText("QUERY INDEX...");
+    searchBar_->setFixedHeight(42);
+    searchBar_->setMaximumWidth(320);
     searchBar_->setStyleSheet(inputStyle());
 
-    auto* btnUpload = new QPushButton("⬆  Upload File");
-    btnUpload->setFixedHeight(38);
-    btnUpload->setStyleSheet(btnStyle(ACCENT, ACCENT2));
+    auto* btnUpload = new QPushButton("+ INGEST PAYLOAD");
+    btnUpload->setFixedHeight(42);
+    btnUpload->setStyleSheet(btnStyle(TEXT_MAIN, BG_MAIN, ACCENT_ORANGE, TEXT_MAIN));
 
     topBar->addWidget(pageTitle);
     topBar->addStretch();
     topBar->addWidget(searchBar_);
-    topBar->addSpacing(10);
+    topBar->addSpacing(16);
     topBar->addWidget(btnUpload);
 
-    // column header row
+    // COLUMN HEADER ROW
     auto* header = new QWidget;
     header->setAttribute(Qt::WA_StyledBackground, true);
-    header->setFixedHeight(34);
-    header->setStyleSheet(QString("background:%1;border-radius:6px;").arg(BG_PANEL));
+    header->setFixedHeight(36);
+    // Solid bottom border only, to separate headers from the list
+    header->setStyleSheet(QString("background: transparent; border-bottom: 2px solid %1;").arg(TEXT_MAIN));
+    
     auto* hLayout = new QHBoxLayout(header);
-    hLayout->setContentsMargins(60,0,14,0);
+    hLayout->setContentsMargins(64, 0, 14, 0); // Aligned to account for the [ ICON ] width
     hLayout->setSpacing(14);
 
     auto makeHdr = [](const QString& t, int minW=0) {
         auto* l = new QLabel(t);
-        l->setStyleSheet("color:#475569;font-size:10px;font-weight:bold;"
-                         "letter-spacing:1px;background:transparent;");
+        l->setStyleSheet("border: none; color: #0F0F0F; font-size: 11px; font-weight: 900; letter-spacing: 2px; background: transparent;");
         if (minW) l->setMinimumWidth(minW);
         return l;
     };
-    hLayout->addWidget(makeHdr("NAME"), 2);
-    hLayout->addWidget(makeHdr("UPLOADED BY"), 1);
-    hLayout->addWidget(makeHdr("SIZE"));
-    hLayout->addWidget(makeHdr("DATE"));
-    hLayout->addSpacing(230);
+    
+    hLayout->addWidget(makeHdr("IDENTIFIER"), 2);
+    hLayout->addWidget(makeHdr("AUTHOR"), 1);
+    hLayout->addWidget(makeHdr("WEIGHT"));
+    hLayout->addWidget(makeHdr("TIMESTAMP"));
+    hLayout->addSpacing(230); // Space for action buttons
 
-    // scroll area
+    // SCROLL AREA
     scrollArea_ = new QScrollArea;
     scrollArea_->setWidgetResizable(true);
     scrollArea_->setStyleSheet(QString(
-        "QScrollArea{border:none;background:%1;}"
-        "QScrollBar:vertical{background:%2;width:5px;border-radius:3px;}"
-        "QScrollBar::handle:vertical{background:#334155;border-radius:3px;}")
-        .arg(BG_DEEP, BG_PANEL));
+        "QScrollArea { border: none; background: transparent; }"
+        "QScrollBar:vertical { background: %1; width: 8px; }"
+        "QScrollBar::handle:vertical { background: %2; min-height: 20px; }"
+    ).arg(BG_ALT, TEXT_MAIN));
 
     listWidget_ = new QWidget;
     listWidget_->setAttribute(Qt::WA_StyledBackground, true);
-    listWidget_->setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    listWidget_->setStyleSheet(QString("background: transparent;"));
+    
     listLayout_ = new QVBoxLayout(listWidget_);
-    listLayout_->setContentsMargins(0,4,0,4);
-    listLayout_->setSpacing(4);
+    listLayout_->setContentsMargins(0, 0, 0, 0);
+    listLayout_->setSpacing(0); // Removing spacing so the 1px borders merge into a continuous grid
     listLayout_->setAlignment(Qt::AlignTop);
 
-    emptyLabel_ = new QLabel("No files yet.\nUpload something to share with everyone.");
+    emptyLabel_ = new QLabel("INDEX EMPTY.\nNO PAYLOADS DETECTED.");
     emptyLabel_->setAlignment(Qt::AlignCenter);
     emptyLabel_->setStyleSheet(QString(
-        "color:%1;font-size:15px;padding:60px;background:transparent;").arg(TEXT_SEC));
+        "color: %1; font-size: 14px; font-weight: bold; font-family: monospace; letter-spacing: 2px; padding: 60px; background: transparent;"
+    ).arg(TEXT_DIM));
+    
     listLayout_->addWidget(emptyLabel_);
     scrollArea_->setWidget(listWidget_);
 
     browseLayout->addLayout(topBar);
+    browseLayout->addSpacing(8);
     browseLayout->addWidget(header);
     browseLayout->addWidget(scrollArea_, 1);
 
@@ -452,7 +467,7 @@ FilesPanel::FilesPanel(QWidget* parent) : QWidget(parent)
     stack_->addWidget(reportPanel_); // 2
 
     auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(0,0,0,0);
+    root->setContentsMargins(0, 0, 0, 0);
     root->addWidget(stack_);
 
     // connections
@@ -461,12 +476,12 @@ FilesPanel::FilesPanel(QWidget* parent) : QWidget(parent)
     connect(viewPanel_,   &ViewPanel::backClicked,   this, &FilesPanel::showBrowse);
     connect(reportPanel_, &ReportPanel::cancelled,   this, &FilesPanel::showBrowse);
     connect(reportPanel_, &ReportPanel::submitted,   this, [this](const Message& msg){
-    emit sendMessage(msg);
+        emit sendMessage(msg);
         showBrowse();
         auto* box = new QMessageBox(this);
         box->setStyleSheet(msgBoxStyle());
-        box->setWindowTitle("Reported");
-        box->setText("File has been reported for admin review.");
+        box->setWindowTitle("LOGGED");
+        box->setText("INFRACTION LOGGED FOR REVIEW.");
         box->exec();
     });
 }
@@ -503,7 +518,7 @@ void FilesPanel::onUpload(){
     if (!file.open(QIODevice::ReadOnly)) {
         auto* box = new QMessageBox(this);
         box->setStyleSheet(msgBoxStyle());
-        box->setText("Could not open file.");
+        box->setText("ERR // READ FAILURE.");
         box->exec();
         return;
     }
@@ -512,8 +527,8 @@ void FilesPanel::onUpload(){
     if (fileData.size() > 5 * 1024 * 1024) {
         auto* box = new QMessageBox(this);
         box->setStyleSheet(msgBoxStyle());
-        box->setWindowTitle("File Too Large");
-        box->setText("Maximum file size is 5MB.");
+        box->setWindowTitle("ERR // OVERFLOW");
+        box->setText("PAYLOAD EXCEEDS 5MB LIMIT.");
         box->exec();
         return;
     }
@@ -521,7 +536,6 @@ void FilesPanel::onUpload(){
     QFileInfo info(path);
     QString b64 = fileData.toBase64();
 
-    // cache content locally so View/Download work immediately after upload
     pendingContent_[info.fileName()] = b64;
 
     Message msg;
@@ -567,7 +581,6 @@ void FilesPanel::receiveMessage(const Message& msg)
         emptyLabel_->setVisible(false);
         addFileRow(id, filename, uploader, size, ts, url);
     }
-    // MATERIAL_REPORT handled by ReportPanel directly — no dialog here
 }
 
 void FilesPanel::addFileRow(const QString& id, const QString& filename,
@@ -597,7 +610,6 @@ void FilesPanel::clearList()
 void FilesPanel::showView(const QString& id, const QString& url,
                            const QString& filename, const QString& content)
 {
-    // fetch content if we have it stored
     QString c = content;
     if (c.isEmpty() && files_.contains(id))
         c = files_[id].content;
@@ -615,20 +627,18 @@ void FilesPanel::showReport(const QString& id, const QString& filename)
 void FilesPanel::downloadFile(const QString& id, const QString& url,
                                const QString& filename)
 {
-    // get stored content
     QString content = files_.contains(id) ? files_[id].content : "";
 
     if (content.isEmpty()) {
         auto* box = new QMessageBox(this);
         box->setStyleSheet(msgBoxStyle());
-        box->setWindowTitle("Download");
-        box->setText("File content not available locally.\n"
-                     "HTTP download will be added when the server serves files over HTTP.");
+        box->setWindowTitle("ERR // NOT FOUND");
+        box->setText("PAYLOAD NOT AVAILABLE IN LOCAL CACHE.\nWAITING ON HTTP IMPLEMENTATION.");
         box->exec();
         return;
     }
 
-    QString savePath = QFileDialog::getSaveFileName(this, "Save File", filename);
+    QString savePath = QFileDialog::getSaveFileName(this, "SAVE TARGET AS...", filename);
     if (savePath.isEmpty()) return;
 
     QByteArray data = QByteArray::fromBase64(content.toUtf8());
@@ -638,8 +648,8 @@ void FilesPanel::downloadFile(const QString& id, const QString& url,
         file.close();
         auto* box = new QMessageBox(this);
         box->setStyleSheet(msgBoxStyle());
-        box->setWindowTitle("Downloaded");
-        box->setText("File saved to:\n" + savePath);
+        box->setWindowTitle("SUCCESS // FETCHED");
+        box->setText("PAYLOAD EXPORTED TO:\n" + savePath);
         box->exec();
     }
 }

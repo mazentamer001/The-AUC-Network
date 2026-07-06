@@ -8,6 +8,4 @@ public:
 signals:
     void registerClicked();
     void loginClicked();
-protected:
-    void paintEvent(QPaintEvent*) override;
 };

@@ -34,4 +34,5 @@ private:
     QString token_;
     QString userId_;
     QString displayName_;
+    QString username_;
 };

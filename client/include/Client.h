@@ -1,5 +1,4 @@
-#ifndef CLIENT_H
-#define CLIENT_H
+#pragma once
 
 #include <boost/asio.hpp>
 #include <functional>
@@ -28,5 +27,3 @@ public:
     void setOnConnected(std::function<void()> callback);
     void setOnMessage(std::function<void(const Message&)> callback); 
 };
-
-#endif

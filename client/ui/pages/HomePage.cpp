@@ -3,116 +3,137 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QPainter>
-#include <QLinearGradient>
+#include <QFrame>
 
-static const char* ACCENT  = "#6366f1";
-static const char* ACCENT2 = "#818cf8";
-static const char* TEXT_PRI = "#f1f5f9";
-static const char* TEXT_SEC = "#94a3b8";
-static const char* BG_CARD  = "#1e293b";
+// Color Palette matching the label vibe
+static const char* BG_MAIN = "#D4C5B6";       // Warm Sand/Beige
+static const char* TEXT_MAIN = "#0F0F0F";     // Ink Black
+static const char* ACCENT_ORANGE = "#E65C40"; // Stamp Red-Orange
+
+// Helpers for crisp 1px black lines to mimic the label's dividers
+QFrame* createHLine() {
+    QFrame* line = new QFrame;
+    line->setFrameShape(QFrame::HLine);
+    line->setFixedHeight(1);
+    line->setStyleSheet(QString("background-color: %1; border: none;").arg(TEXT_MAIN));
+    return line;
+}
+
+QFrame* createVLine() {
+    QFrame* line = new QFrame;
+    line->setFrameShape(QFrame::VLine);
+    line->setFixedWidth(1);
+    line->setStyleSheet(QString("background-color: %1; border: none;").arg(TEXT_MAIN));
+    return line;
+}
 
 HomePage::HomePage(QWidget* parent) : QWidget(parent)
 {
+    // 1. Base Background
     setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(QString("HomePage { background-color: %1; }").arg(BG_MAIN));
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(0,0,0,0);
+    outer->setContentsMargins(50, 60, 50, 60); // Framing it like a printed label
     outer->setSpacing(0);
 
-    // ── nav bar ───────────────────────────────────────────────────────────
-    auto* nav = new QWidget;
-    nav->setFixedHeight(60);
-    nav->setStyleSheet("background:rgba(15,23,42,0.85);border-bottom:1px solid #1e293b;");
-    auto* navLayout = new QHBoxLayout(nav);
-    navLayout->setContentsMargins(32,0,32,0);
-    auto* logo = new QLabel("⬡  The Network");
-    logo->setStyleSheet(QString("color:%1;font-size:18px;font-weight:bold;").arg(ACCENT2));
-    navLayout->addWidget(logo);
-    navLayout->addStretch();
+    // ── BRANDING (Bolded "THE NETWORK") ───────────────────────────────────
+    auto* logo = new QLabel("THE NETWORK");
+    logo->setAlignment(Qt::AlignCenter);
+    logo->setStyleSheet(QString(
+        "color: %1; font-size: 84px; font-weight: 900; " // Maximized thickness (900)
+        "letter-spacing: 10px; font-family: sans-serif;"
+    ).arg(TEXT_MAIN));
+    outer->addWidget(logo);
+    outer->addSpacing(40);
 
-    // ── hero ──────────────────────────────────────────────────────────────
-    auto* hero = new QWidget;
-    hero->setStyleSheet("background:transparent;");
-    auto* heroLayout = new QVBoxLayout(hero);
-    heroLayout->setAlignment(Qt::AlignCenter);
-    heroLayout->setSpacing(0);
+    outer->addWidget(createHLine());
 
-    auto* title = new QLabel("The Network");
-    title->setAlignment(Qt::AlignCenter);
-    title->setStyleSheet(QString(
-        "color:%1;font-size:72px;font-weight:900;"
-        "letter-spacing:-3px;background:transparent;").arg(TEXT_PRI));
+    // ── SUBTITLE & VERSION (Mimicking "WOODS | NR 024") ───────────────────
+    auto* titleRow = new QHBoxLayout;
+    titleRow->setContentsMargins(0, 0, 0, 0);
+    titleRow->setSpacing(0);
 
-    auto* subtitle = new QLabel("Your university. Connected.");
-    subtitle->setAlignment(Qt::AlignCenter);
-    subtitle->setStyleSheet(QString(
-        "color:%1;font-size:20px;font-weight:300;"
-        "letter-spacing:3px;background:transparent;").arg(TEXT_SEC));
+    auto* sectionName = new QLabel("CAMPUS");
+    sectionName->setStyleSheet(QString(
+        "color: %1; font-size: 32px; font-weight: bold; "
+        "letter-spacing: 2px; padding: 20px 20px;"
+    ).arg(TEXT_MAIN));
 
-    auto* line = new QWidget;
-    line->setFixedSize(80,3);
-    line->setStyleSheet(QString("background:%1;border-radius:2px;").arg(ACCENT));
+    auto* versionNum = new QLabel("VER  1.0");
+    versionNum->setAlignment(Qt::AlignCenter);
+    versionNum->setStyleSheet(QString(
+        "color: %1; font-size: 24px; font-family: monospace; "
+        "letter-spacing: 4px; padding: 20px 0px;"
+    ).arg(TEXT_MAIN));
 
-    // buttons
-    auto* btnRow = new QHBoxLayout;
-    btnRow->setSpacing(16);
-    btnRow->setAlignment(Qt::AlignCenter);
+    titleRow->addWidget(sectionName, 3);
+    titleRow->addWidget(createVLine());
+    titleRow->addWidget(versionNum, 1);
 
-    auto* btnGet = new QPushButton("  Get Started");
-    btnGet->setFixedSize(200,52);
+    outer->addLayout(titleRow);
+    outer->addWidget(createHLine());
+
+    // ── TYPE & SIZE (Mimicking "EAU DE PARFUM ---- 50ml") ─────────────────
+    auto* typeRow = new QHBoxLayout;
+    typeRow->setContentsMargins(0, 30, 0, 30);
+    
+    auto* typeLabel = new QLabel("STUDENT PLATFORM");
+    typeLabel->setStyleSheet(QString("color: %1; font-size: 14px; font-weight: bold; letter-spacing: 2px;").arg(TEXT_MAIN));
+    
+    auto* typeLine = createHLine(); // Central connector line
+    
+    auto* sizeLabel = new QLabel("ONLINE");
+    sizeLabel->setStyleSheet(QString("color: %1; font-size: 14px; font-weight: bold; letter-spacing: 2px;").arg(TEXT_MAIN));
+    
+    typeRow->addWidget(typeLabel);
+    typeRow->addSpacing(15);
+    typeRow->addWidget(typeLine, 1); 
+    typeRow->addSpacing(15);
+    typeRow->addWidget(sizeLabel);
+    
+    outer->addLayout(typeRow);
+    outer->addWidget(createHLine());
+
+    // ── CENTRALIZED ACTION BUTTONS ────────────────────────────────────────
+    auto* centralButtonLayout = new QVBoxLayout;
+    centralButtonLayout->setContentsMargins(0, 50, 0, 50);
+    centralButtonLayout->setAlignment(Qt::AlignCenter);
+    centralButtonLayout->setSpacing(25);
+
+    // Large, circular orange-red stamp button
+    auto* btnGet = new QPushButton("GET\nSTARTED");
+    btnGet->setFixedSize(150, 150);
     btnGet->setStyleSheet(QString(
-        "QPushButton{background:%1;color:white;border:none;"
-        "border-radius:26px;font-size:15px;font-weight:bold;}"
-        "QPushButton:hover{background:%2;}").arg(ACCENT, ACCENT2));
+        "QPushButton {"
+        "  background: transparent; color: %1; "
+        "  border: 2px solid %1; border-radius: 75px;" // Perfectly circular
+        "  font-size: 16px; font-weight: bold; letter-spacing: 1px;"
+        "}"
+        "QPushButton:hover { background: %1; color: %2; }"
+    ).arg(ACCENT_ORANGE, BG_MAIN));
 
-    auto* btnSign = new QPushButton("  Sign In");
-    btnSign->setFixedSize(200,52);
+    // Sleek rectangular outline button below it
+    auto* btnSign = new QPushButton("SIGN IN");
+    btnSign->setFixedSize(150, 42);
     btnSign->setStyleSheet(QString(
-        "QPushButton{background:transparent;color:%1;"
-        "border:2px solid %1;border-radius:26px;font-size:15px;font-weight:bold;}"
-        "QPushButton:hover{background:%1;color:white;}").arg(ACCENT2));
+        "QPushButton {"
+        "  background: transparent; color: %1; "
+        "  border: 1px solid %1; "
+        "  font-size: 13px; font-weight: bold; letter-spacing: 2px;"
+        "}"
+        "QPushButton:hover { background: %1; color: %2; }"
+    ).arg(TEXT_MAIN, BG_MAIN));
 
-    btnRow->addWidget(btnGet);
-    btnRow->addWidget(btnSign);
+    centralButtonLayout->addWidget(btnGet, 0, Qt::AlignCenter);
+    centralButtonLayout->addWidget(btnSign, 0, Qt::AlignCenter);
 
-    // feature pills
-    auto* pillRow = new QHBoxLayout;
-    pillRow->setSpacing(12);
-    pillRow->setAlignment(Qt::AlignCenter);
-    for (auto& f : {"💬  Chat","🛒  Marketplace","📁  Files","❓  Forum"}) {
-        auto* pill = new QLabel(f);
-        pill->setStyleSheet(QString(
-            "background:%1;color:%2;border-radius:16px;"
-            "padding:6px 18px;font-size:13px;").arg(BG_CARD, TEXT_SEC));
-        pillRow->addWidget(pill);
-    }
+    outer->addLayout(centralButtonLayout);
+    
+    // Pushes all elements flush against their top bounds safely
+    outer->addStretch();
 
-    heroLayout->addStretch(2);
-    heroLayout->addWidget(title);
-    heroLayout->addSpacing(10);
-    heroLayout->addWidget(subtitle);
-    heroLayout->addSpacing(20);
-    heroLayout->addWidget(line, 0, Qt::AlignCenter);
-    heroLayout->addSpacing(44);
-    heroLayout->addLayout(btnRow);
-    heroLayout->addSpacing(36);
-    heroLayout->addLayout(pillRow);
-    heroLayout->addStretch(3);
-
-    outer->addWidget(nav);
-    outer->addWidget(hero, 1);
-
-    connect(btnGet,  &QPushButton::clicked, this, &HomePage::registerClicked);
+    // ── CONNECTIONS ───────────────────────────────────────────────────────
+    connect(btnGet, &QPushButton::clicked, this, &HomePage::registerClicked);
     connect(btnSign, &QPushButton::clicked, this, &HomePage::loginClicked);
-}
-
-void HomePage::paintEvent(QPaintEvent*)
-{
-    QPainter p(this);
-    QLinearGradient grad(0,0,width(),height());
-    grad.setColorAt(0.0, QColor("#0a0f1e"));
-    grad.setColorAt(0.5, QColor("#0f172a"));
-    grad.setColorAt(1.0, QColor("#1a0a2e"));
-    p.fillRect(rect(), grad);
 }

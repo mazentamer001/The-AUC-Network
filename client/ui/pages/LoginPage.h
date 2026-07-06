@@ -12,8 +12,6 @@ signals:
     void submitted(const Message& msg);
     void registerClicked();
     void backClicked();
-protected:
-    void paintEvent(QPaintEvent*) override;
 private slots:
     void onSubmit();
 private:

@@ -2,6 +2,9 @@
 #include <iostream>
 
 
+//The Client is what lives on the users computer
+
+
 //constructor, initializes the socket which is used to communicate with the server and the resolver which turns domain to ip
 Client::Client(boost::asio::io_context& io, const std::string& host, const std::string& port): socket_(io), resolver_(io)
 {

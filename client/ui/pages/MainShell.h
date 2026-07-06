@@ -9,6 +9,7 @@ class ChatPanel;
 class MarketplacePanel;
 class FilesPanel;
 class ForumPanel;
+class ProfilePanel;
 
 class MainShell : public QWidget {
     Q_OBJECT
@@ -16,7 +17,7 @@ public:
     explicit MainShell(QWidget* parent = nullptr);
 
     void setCurrentUser(const QString& displayName, const QString& userId,
-                        const QString& token);
+                        const QString& username,    const QString& token);
     void routeMessage(const Message& msg);
 
 signals:
@@ -33,6 +34,7 @@ private:
     MarketplacePanel*  marketPanel_;
     FilesPanel*        filesPanel_;
     ForumPanel*        forumPanel_;
+    ProfilePanel*      profilePanel_;
 
     QToolButton* btnChat_;
     QToolButton* btnMarket_;

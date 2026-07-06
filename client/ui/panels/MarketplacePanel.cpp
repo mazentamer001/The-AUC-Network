@@ -11,39 +11,79 @@
 #include <QFrame>
 #include <QMouseEvent>
 #include <QMessageBox>
-#include <QGraphicsDropShadowEffect>
 #include <QDebug>
 
-// ── palette ───────────────────────────────────────────────────────────────────
-static const char* ACCENT   = "#6366f1";
-static const char* ACCENT2  = "#818cf8";
-static const char* TEXT_PRI = "#f1f5f9";
-static const char* TEXT_SEC = "#94a3b8";
-static const char* BG_DEEP  = "#0a0f1e";
-static const char* BG_PANEL = "#0f172a";
-static const char* BG_CARD  = "#1e293b";
-static const char* BG_INPUT = "#334155";
-static const char* SUCCESS  = "#22c55e";
+// ── palette (matches HomePage's printed-label aesthetic) ───────────────────────
+static const char* BG_MAIN       = "#D4C5B6"; // Warm Sand/Beige
+static const char* BG_CARD       = "#CBBBA8"; // Slightly deeper sand for cards
+static const char* TEXT_MAIN     = "#0F0F0F"; // Ink Black
+static const char* TEXT_SEC      = "#5A4B3E"; // Muted brown-black
+static const char* ACCENT_ORANGE = "#E65C40"; // Stamp Red-Orange
 
-static QString inputStyle() {
-    return QString("QLineEdit{background:%1;color:%2;border:1px solid #334155;"
-        "border-radius:8px;padding:8px 12px;font-size:13px;}"
-        "QLineEdit:focus{border:1px solid %3;}").arg(BG_INPUT, TEXT_PRI, ACCENT2);
+// ── divider helpers (kept local/static so they don't clash with HomePage.cpp) ──
+static QFrame* createHLineMP() {
+    QFrame* line = new QFrame;
+    line->setFrameShape(QFrame::HLine);
+    line->setFixedHeight(1);
+    line->setStyleSheet(QString("background-color: %1; border: none;").arg(TEXT_MAIN));
+    return line;
 }
 
-static QString btnStyle(const char* bg, const char* hover) {
-    return QString("QPushButton{background:%1;color:white;border:none;"
-        "border-radius:8px;padding:8px 18px;font-size:13px;font-weight:bold;}"
-        "QPushButton:hover{background:%2;}").arg(bg, hover);
+static QFrame* createVLineMP() {
+    QFrame* line = new QFrame;
+    line->setFrameShape(QFrame::VLine);
+    line->setFixedWidth(1);
+    line->setStyleSheet(QString("background-color: %1; border: none;").arg(TEXT_MAIN));
+    return line;
+}
+
+// ── shared style builders ───────────────────────────────────────────────────
+static QString labelHeaderStyle() {
+    return QString("color:%1;font-size:12px;font-weight:bold;letter-spacing:2px;").arg(TEXT_SEC);
+}
+
+static QString inputStyle() {
+    return QString("QLineEdit{background:transparent;color:%1;border:none;"
+        "border-bottom:1px solid %1;padding:8px 4px;font-size:14px;}"
+        "QLineEdit:focus{border-bottom:2px solid %2;}").arg(TEXT_MAIN, ACCENT_ORANGE);
+}
+
+static QString textEditStyle() {
+    return QString("QTextEdit{background:transparent;color:%1;border:1px solid %1;"
+        "padding:8px;font-size:13px;}"
+        "QTextEdit:focus{border:1px solid %2;}").arg(TEXT_MAIN, ACCENT_ORANGE);
+}
+
+// primary action: orange outline stamp, fills orange on hover (like GET STARTED)
+static QString primaryBtnStyle() {
+    return QString(
+        "QPushButton{background:transparent;color:%1;border:2px solid %1;"
+        "font-size:13px;font-weight:bold;letter-spacing:2px;padding:10px 20px;}"
+        "QPushButton:hover{background:%1;color:%2;}").arg(ACCENT_ORANGE, BG_MAIN);
+}
+
+// secondary action: black outline, fills black on hover (like SIGN IN)
+static QString secondaryBtnStyle() {
+    return QString(
+        "QPushButton{background:transparent;color:%1;border:1px solid %1;"
+        "font-size:12px;font-weight:bold;letter-spacing:2px;padding:8px 16px;}"
+        "QPushButton:hover{background:%1;color:%2;}").arg(TEXT_MAIN, BG_MAIN);
+}
+
+// flat text-only "back" link
+static QString linkBtnStyle() {
+    return QString("QPushButton{background:transparent;color:%1;border:none;"
+        "font-size:12px;font-weight:bold;letter-spacing:1px;}"
+        "QPushButton:hover{color:%2;}").arg(TEXT_SEC, TEXT_MAIN);
 }
 
 static QString msgBoxStyle() {
     return QString("QMessageBox{background:%1;color:%2;}"
-        "QMessageBox QLabel{color:%2;}"
-        "QMessageBox QPushButton{background:%3;color:white;border:none;"
-        "border-radius:6px;padding:6px 18px;}"
-        "QMessageBox QPushButton:hover{background:%4;}")
-        .arg(BG_PANEL, TEXT_PRI, ACCENT, ACCENT2);
+        "QMessageBox QLabel{color:%2;font-size:13px;}"
+        "QMessageBox QPushButton{background:transparent;color:%3;border:1px solid %3;"
+        "padding:6px 18px;font-weight:bold;letter-spacing:1px;}"
+        "QMessageBox QPushButton:hover{background:%3;color:%1;}")
+        .arg(BG_MAIN, TEXT_MAIN, ACCENT_ORANGE);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,39 +97,41 @@ ListingCard::ListingCard(const QString& id, const QString& title,
     setFixedSize(240, 200);
     setCursor(Qt::PointingHandCursor);
     setStyleSheet(QString(
-        "QWidget{background:%1;border-radius:12px;}"
-        "QWidget:hover{background:%2;}").arg(BG_CARD, "#263349"));
-
-    auto* shadow = new QGraphicsDropShadowEffect;
-    shadow->setBlurRadius(16); shadow->setOffset(0,4);
-    shadow->setColor(QColor(0,0,0,100));
-    setGraphicsEffect(shadow);
+        "QWidget{background:%1;border:1px solid %2;}"
+        "QWidget:hover{background:%3;border:1px solid %4;}")
+        .arg(BG_MAIN, TEXT_MAIN, BG_CARD, ACCENT_ORANGE));
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(16,16,16,16);
-    layout->setSpacing(8);
+    layout->setSpacing(6);
 
-    // image placeholder
+    // image placeholder — bordered box, label-tag style
     auto* imgPlaceholder = new QLabel("🖼");
     imgPlaceholder->setAlignment(Qt::AlignCenter);
-    imgPlaceholder->setFixedHeight(80);
+    imgPlaceholder->setFixedHeight(72);
     imgPlaceholder->setStyleSheet(QString(
-        "background:%1;border-radius:8px;font-size:32px;").arg(BG_DEEP));
+        "background:transparent;border:1px solid %1;font-size:28px;color:%1;").arg(TEXT_MAIN));
 
-    auto* titleLbl = new QLabel(title);
-    titleLbl->setStyleSheet(QString("color:%1;font-weight:bold;font-size:13px;").arg(TEXT_PRI));
+    auto* titleLbl = new QLabel(title.toUpper());
+    titleLbl->setStyleSheet(QString(
+        "color:%1;font-weight:bold;font-size:12px;letter-spacing:1px;").arg(TEXT_MAIN));
     titleLbl->setWordWrap(true);
     titleLbl->setMaximumHeight(36);
 
     auto* priceLbl = new QLabel(price);
-    priceLbl->setStyleSheet(QString("color:%1;font-size:15px;font-weight:bold;").arg(SUCCESS));
+    priceLbl->setStyleSheet(QString(
+        "color:%1;font-size:16px;font-weight:900;").arg(ACCENT_ORANGE));
 
-    auto* sellerLbl = new QLabel("by " + seller);
-    sellerLbl->setStyleSheet(QString("color:%1;font-size:11px;").arg(TEXT_SEC));
+    auto* divider = createHLineMP();
+
+    auto* sellerLbl = new QLabel("BY " + seller.toUpper());
+    sellerLbl->setStyleSheet(QString(
+        "color:%1;font-size:10px;letter-spacing:1px;").arg(TEXT_SEC));
 
     layout->addWidget(imgPlaceholder);
     layout->addWidget(titleLbl);
     layout->addWidget(priceLbl);
+    layout->addWidget(divider);
     layout->addWidget(sellerLbl);
     layout->addStretch();
 }
@@ -101,68 +143,69 @@ void ListingCard::mousePressEvent(QMouseEvent*) { emit clicked(id_); }
 // ─────────────────────────────────────────────────────────────────────────────
 PostListingPanel::PostListingPanel(QWidget* parent) : QWidget(parent)
 {
-    setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(QString("PostListingPanel{background:%1;}").arg(BG_MAIN));
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(40,30,40,30);
+    outer->setContentsMargins(50,50,50,50);
     outer->setSpacing(0);
 
     // header
     auto* header = new QHBoxLayout;
-    auto* btnBack = new QPushButton("← Back");
+    auto* btnBack = new QPushButton("← BACK");
     btnBack->setFlat(true);
-    btnBack->setStyleSheet(QString("color:%1;font-size:13px;").arg(TEXT_SEC));
-    auto* titleLbl = new QLabel("Post a Listing");
-    titleLbl->setStyleSheet(QString("color:%1;font-size:22px;font-weight:bold;").arg(TEXT_PRI));
+    btnBack->setStyleSheet(linkBtnStyle());
     header->addWidget(btnBack);
     header->addStretch();
     outer->addLayout(header);
-    outer->addSpacing(8);
+    outer->addSpacing(16);
+
+    auto* titleLbl = new QLabel("POST A LISTING");
+    titleLbl->setStyleSheet(QString(
+        "color:%1;font-size:32px;font-weight:900;letter-spacing:4px;").arg(TEXT_MAIN));
     outer->addWidget(titleLbl);
+    outer->addSpacing(20);
+    outer->addWidget(createHLineMP());
     outer->addSpacing(24);
 
     // form card
     auto* card = new QWidget;
-    card->setStyleSheet(QString("background:%1;border-radius:12px;").arg(BG_PANEL));
     card->setMaximumWidth(600);
     auto* form = new QVBoxLayout(card);
-    form->setContentsMargins(30,28,30,28);
-    form->setSpacing(14);
+    form->setContentsMargins(0,0,0,0);
+    form->setSpacing(16);
 
-    auto addLabel = [&](const QString& t){ 
+    auto addLabel = [&](const QString& t){
         auto* l = new QLabel(t);
-        l->setStyleSheet(QString("color:%1;font-size:12px;font-weight:bold;").arg(TEXT_SEC));
+        l->setStyleSheet(labelHeaderStyle());
         form->addWidget(l);
     };
 
     addLabel("TITLE *");
     title_ = new QLineEdit; title_->setPlaceholderText("What are you selling?");
-    title_->setStyleSheet(inputStyle()); title_->setFixedHeight(42);
+    title_->setStyleSheet(inputStyle()); title_->setFixedHeight(38);
     form->addWidget(title_);
 
     addLabel("PRICE *");
     price_ = new QLineEdit; price_->setPlaceholderText("e.g. 150 EGP");
-    price_->setStyleSheet(inputStyle()); price_->setFixedHeight(42);
+    price_->setStyleSheet(inputStyle()); price_->setFixedHeight(38);
     form->addWidget(price_);
 
     addLabel("PHOTO URL");
     mediaUrl_ = new QLineEdit; mediaUrl_->setPlaceholderText("https://...");
-    mediaUrl_->setStyleSheet(inputStyle()); mediaUrl_->setFixedHeight(42);
+    mediaUrl_->setStyleSheet(inputStyle()); mediaUrl_->setFixedHeight(38);
     form->addWidget(mediaUrl_);
 
     addLabel("DESCRIPTION");
     description_ = new QTextEdit;
     description_->setPlaceholderText("Describe your item...");
     description_->setFixedHeight(100);
-    description_->setStyleSheet(QString(
-        "QTextEdit{background:%1;color:%2;border:1px solid #334155;"
-        "border-radius:8px;padding:8px;font-size:13px;}"
-        "QTextEdit:focus{border:1px solid %3;}").arg(BG_INPUT, TEXT_PRI, ACCENT2));
+    description_->setStyleSheet(textEditStyle());
     form->addWidget(description_);
 
-    form->addSpacing(8);
-    auto* btnSubmit = new QPushButton("Post Listing");
+    form->addSpacing(12);
+    auto* btnSubmit = new QPushButton("POST LISTING");
     btnSubmit->setFixedHeight(46);
-    btnSubmit->setStyleSheet(btnStyle(ACCENT, ACCENT2));
+    btnSubmit->setStyleSheet(primaryBtnStyle());
     form->addWidget(btnSubmit);
 
     outer->addWidget(card);
@@ -199,26 +242,28 @@ void PostListingPanel::onSubmit()
 // ─────────────────────────────────────────────────────────────────────────────
 ListingDetailPanel::ListingDetailPanel(QWidget* parent) : QWidget(parent)
 {
-    setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(QString("ListingDetailPanel{background:%1;}").arg(BG_MAIN));
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(40,30,40,30);
+    outer->setContentsMargins(50,50,50,50);
     outer->setSpacing(0);
 
     auto* header = new QHBoxLayout;
-    auto* btnBack = new QPushButton("← Back to listings");
+    auto* btnBack = new QPushButton("← BACK TO LISTINGS");
     btnBack->setFlat(true);
-    btnBack->setStyleSheet(QString("color:%1;font-size:13px;").arg(TEXT_SEC));
+    btnBack->setStyleSheet(linkBtnStyle());
     header->addWidget(btnBack);
     header->addStretch();
     outer->addLayout(header);
     outer->addSpacing(20);
+    outer->addWidget(createHLineMP());
+    outer->addSpacing(24);
 
     // detail card
     auto* card = new QWidget;
-    card->setStyleSheet(QString("background:%1;border-radius:12px;").arg(BG_PANEL));
     card->setMaximumWidth(700);
     auto* layout = new QVBoxLayout(card);
-    layout->setContentsMargins(32,28,32,28);
+    layout->setContentsMargins(0,0,0,0);
     layout->setSpacing(16);
 
     // image placeholder
@@ -226,32 +271,33 @@ ListingDetailPanel::ListingDetailPanel(QWidget* parent) : QWidget(parent)
     img->setAlignment(Qt::AlignCenter);
     img->setFixedHeight(180);
     img->setStyleSheet(QString(
-        "background:%1;border-radius:8px;font-size:56px;").arg(BG_DEEP));
+        "background:transparent;border:1px solid %1;font-size:48px;color:%1;").arg(TEXT_MAIN));
     layout->addWidget(img);
 
     title_ = new QLabel;
-    title_->setStyleSheet(QString("color:%1;font-size:22px;font-weight:bold;").arg(TEXT_PRI));
+    title_->setStyleSheet(QString(
+        "color:%1;font-size:26px;font-weight:900;letter-spacing:2px;").arg(TEXT_MAIN));
     title_->setWordWrap(true);
 
     price_ = new QLabel;
-    price_->setStyleSheet(QString("color:%1;font-size:24px;font-weight:bold;").arg(SUCCESS));
+    price_->setStyleSheet(QString(
+        "color:%1;font-size:26px;font-weight:900;").arg(ACCENT_ORANGE));
 
     seller_ = new QLabel;
-    seller_->setStyleSheet(QString("color:%1;font-size:13px;").arg(TEXT_SEC));
+    seller_->setStyleSheet(QString(
+        "color:%1;font-size:12px;letter-spacing:1px;").arg(TEXT_SEC));
 
-    auto* divider = new QFrame;
-    divider->setFrameShape(QFrame::HLine);
-    divider->setStyleSheet("background:#1e293b;");
+    auto* divider = createHLineMP();
 
     description_ = new QTextEdit;
     description_->setReadOnly(true);
     description_->setFixedHeight(120);
     description_->setStyleSheet(QString(
-        "QTextEdit{background:transparent;color:%1;border:none;font-size:13px;}").arg(TEXT_PRI));
+        "QTextEdit{background:transparent;color:%1;border:none;font-size:13px;}").arg(TEXT_MAIN));
 
-    auto* btnInquire = new QPushButton("💬  Contact Seller");
+    auto* btnInquire = new QPushButton("💬  CONTACT SELLER");
     btnInquire->setFixedHeight(48);
-    btnInquire->setStyleSheet(btnStyle(ACCENT, ACCENT2));
+    btnInquire->setStyleSheet(primaryBtnStyle());
 
     layout->addWidget(title_);
     layout->addWidget(price_);
@@ -284,9 +330,9 @@ void ListingDetailPanel::show(const QString& id, const QString& title,
     currentTitle_    = title;
     currentPrice_    = price;
     currentSellerId_ = sellerId;
-    title_->setText(title);
+    title_->setText(title.toUpper());
     price_->setText(price);
-    seller_->setText("Sold by  " + seller);
+    seller_->setText("SOLD BY  " + seller.toUpper());
     description_->setText(description.isEmpty() ? "No description provided." : description);
     QWidget::show();
 }
@@ -296,7 +342,8 @@ void ListingDetailPanel::show(const QString& id, const QString& title,
 // ─────────────────────────────────────────────────────────────────────────────
 MarketplacePanel::MarketplacePanel(QWidget* parent) : QWidget(parent)
 {
-    setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(QString("MarketplacePanel{background:%1;}").arg(BG_MAIN));
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(0,0,0,0);
     root->setSpacing(0);
@@ -305,39 +352,48 @@ MarketplacePanel::MarketplacePanel(QWidget* parent) : QWidget(parent)
 
     // ── browse page ───────────────────────────────────────────────────────
     auto* browsePage = new QWidget;
-    browsePage->setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    browsePage->setAttribute(Qt::WA_StyledBackground, true);
+    browsePage->setStyleSheet(QString("background:%1;").arg(BG_MAIN));
     auto* browseLayout = new QVBoxLayout(browsePage);
-    browseLayout->setContentsMargins(24,20,24,20);
-    browseLayout->setSpacing(16);
+    browseLayout->setContentsMargins(50,40,50,40);
+    browseLayout->setSpacing(0);
 
-    // top bar
+    // branding, mirroring HomePage's logo treatment
+    auto* pageTitle = new QLabel("MARKETPLACE");
+    pageTitle->setStyleSheet(QString(
+        "color:%1;font-size:40px;font-weight:900;letter-spacing:6px;").arg(TEXT_MAIN));
+    browseLayout->addWidget(pageTitle);
+    browseLayout->addSpacing(16);
+    browseLayout->addWidget(createHLineMP());
+    browseLayout->addSpacing(20);
+
+    // top bar: search + post button
     auto* topBar = new QHBoxLayout;
-    auto* pageTitle = new QLabel("Marketplace");
-    pageTitle->setStyleSheet(QString("color:%1;font-size:22px;font-weight:bold;").arg(TEXT_PRI));
-
     searchBar_ = new QLineEdit;
-    searchBar_->setPlaceholderText("🔍  Search listings...");
-    searchBar_->setFixedHeight(40);
+    searchBar_->setPlaceholderText("SEARCH LISTINGS...");
+    searchBar_->setFixedHeight(38);
     searchBar_->setMaximumWidth(340);
     searchBar_->setStyleSheet(inputStyle());
 
-    auto* btnPost = new QPushButton("+ Post Listing");
+    auto* btnPost = new QPushButton("+ POST LISTING");
     btnPost->setFixedHeight(40);
-    btnPost->setStyleSheet(btnStyle(ACCENT, ACCENT2));
+    btnPost->setStyleSheet(secondaryBtnStyle());
 
-    topBar->addWidget(pageTitle);
-    topBar->addStretch();
     topBar->addWidget(searchBar_);
-    topBar->addSpacing(12);
+    topBar->addStretch();
     topBar->addWidget(btnPost);
+    browseLayout->addLayout(topBar);
+    browseLayout->addSpacing(20);
+    browseLayout->addWidget(createHLineMP());
+    browseLayout->addSpacing(20);
 
     // scroll area for grid
     scrollArea_ = new QScrollArea;
     scrollArea_->setWidgetResizable(true);
-    scrollArea_->setStyleSheet(
+    scrollArea_->setStyleSheet(QString(
         "QScrollArea{border:none;background:transparent;}"
-        "QScrollBar:vertical{background:#1e293b;width:6px;border-radius:3px;}"
-        "QScrollBar::handle:vertical{background:#334155;border-radius:3px;}");
+        "QScrollBar:vertical{background:%1;width:6px;}"
+        "QScrollBar::handle:vertical{background:%2;}").arg(BG_CARD, TEXT_SEC));
 
     gridWidget_ = new QWidget;
     gridWidget_->setStyleSheet("background:transparent;");
@@ -347,12 +403,12 @@ MarketplacePanel::MarketplacePanel(QWidget* parent) : QWidget(parent)
     scrollArea_->setWidget(gridWidget_);
 
     // empty state
-    auto* emptyLabel = new QLabel("No listings yet.\nBe the first to post something!");
+    auto* emptyLabel = new QLabel("NO LISTINGS YET.\nBE THE FIRST TO POST SOMETHING!");
     emptyLabel->setAlignment(Qt::AlignCenter);
-    emptyLabel->setStyleSheet(QString("color:%1;font-size:15px;").arg(TEXT_SEC));
+    emptyLabel->setStyleSheet(QString(
+        "color:%1;font-size:14px;font-weight:bold;letter-spacing:1px;").arg(TEXT_SEC));
     grid_->addWidget(emptyLabel, 0, 0);
 
-    browseLayout->addLayout(topBar);
     browseLayout->addWidget(scrollArea_, 1);
 
     // ── sub panels ────────────────────────────────────────────────────────
