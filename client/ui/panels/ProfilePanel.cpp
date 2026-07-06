@@ -9,6 +9,7 @@
 #include <QFrame>
 #include <QMessageBox>
 #include <QTimer>
+#include <iostream>
 
 // ── palette (matches HomePage's printed-label aesthetic) ───────────────────────
 static const char* BG_MAIN       = "#D4C5B6"; // Warm Sand/Beige
@@ -61,6 +62,7 @@ ProfilePanel::ProfilePanel(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
     setStyleSheet(QString("background:%1;").arg(BG_MAIN));
+    netManager_ = new QNetworkAccessManager(this);
 
     auto* scroll = new QScrollArea;
     scroll->setWidgetResizable(true);
@@ -248,6 +250,26 @@ ProfilePanel::ProfilePanel(QWidget* parent) : QWidget(parent)
     connect(btnPass, &QPushButton::clicked, this, &ProfilePanel::onChangePassword);
 }
 
+void ProfilePanel::loadAvatarFromUrl(const QString& url)
+{
+    QNetworkRequest req{QUrl(url)};
+    QNetworkReply* reply = netManager_->get(req);
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            std::cerr << "Avatar load failed: " << reply->errorString().toStdString() << "\n";
+            return;
+        }
+        QByteArray data = reply->readAll();
+        QPixmap pix;
+        if (pix.loadFromData(data)) {
+            avatarLabel_->setPixmap(pix.scaled(
+                avatarLabel_->size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+        }
+    });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 void ProfilePanel::setCurrentUser(const QString& displayName,
                                    const QString& userId,
@@ -313,9 +335,12 @@ void ProfilePanel::populateFields(const Message& msg)
     if (!uniId.isEmpty())       uniIdLabel_->setText("🎓  " + uniId);
 
     // show profile pic initial if no URL
-    if (picUrl.isEmpty())
-        avatarLabel_->setText(username.isEmpty() ? "👤" :
-                              QString(username[0].toUpper()));
+    if (picUrl.isEmpty()) {
+        avatarLabel_->setPixmap(QPixmap()); // clear any old image
+        avatarLabel_->setText(username.isEmpty() ? "👤" : QString(username[0].toUpper()));
+    } else {
+        loadAvatarFromUrl(picUrl);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

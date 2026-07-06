@@ -2,6 +2,7 @@
 #include "store/InMemoryStore.h"
 #include "models/FileRecord.h"
 #include "Session.h"
+#include "Server.h" 
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -64,6 +65,7 @@ void FileStorageService::handleUpload(const Message& msg, std::shared_ptr<Sessio
     resp.mediaUrl = record.url;
     resp.text = "File uploaded successfully";
     sender->send(resp);
+    if (server_) server_->broadcast(resp, sender);
 }
 
 //report file

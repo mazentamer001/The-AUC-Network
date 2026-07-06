@@ -275,6 +275,16 @@ void ChatPanel::receiveMessage(const Message& msg)
     QString sender = QString::fromStdString(msg.sender.username);
     QString text   = QString::fromStdString(msg.text);
 
+    if (msg.type == MessageType::CHAT_CREATE) {
+        //only DIRECT rooms should stay hidden from the general list
+        if (!room.isEmpty() && msg.role != "DIRECT" && roomList_->findItems(room, Qt::MatchExactly).isEmpty())
+        {
+            roomList_->addItem(room);
+        }
+        return;
+    }
+
+
     if (msg.type == MessageType::JOIN) {
         joinedRooms_.insert(room);
         if (!room.isEmpty() && roomList_->findItems(room, Qt::MatchExactly).isEmpty())

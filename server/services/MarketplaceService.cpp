@@ -46,6 +46,8 @@ void MarketplaceService::handlePost(const Message& msg, std::shared_ptr<Session>
     resp.sender.username = listing.sellerUsername;
     resp.sender.userId = listing.sellerUserId;
     sender->send(resp);
+
+    if (server_) server_->broadcast(resp, sender);
 }
 
 //delete own listing
@@ -57,7 +59,11 @@ void MarketplaceService::handleDelete(const Message& msg, std::shared_ptr<Sessio
     if (!store_.deleteListing(msg.parentId, sender->userId()))
     { sendError("Listing not found or you are not the seller", sender); return; }
 
-    sendOk("Listing deleted", sender);
+    Message resp;
+    resp.type = MessageType::MARKET_DELETE;
+    resp.parentId = msg.parentId;
+    sender->send(resp);
+    if (server_) server_->broadcast(resp, sender);
 }
 
 //search listings

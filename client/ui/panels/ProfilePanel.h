@@ -1,5 +1,7 @@
 #pragma once
 #include <QWidget>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <QStackedWidget>
 #include "Message.h"
 
@@ -31,11 +33,11 @@ private:
     void populateFields(const Message& msg);
 
     // display
-    QLabel*    avatarLabel_;
-    QLabel*    usernameDisplay_;
-    QLabel*    roleLabel_;
-    QLabel*    emailLabel_;
-    QLabel*    uniIdLabel_;
+    QLabel* avatarLabel_;
+    QLabel* usernameDisplay_;
+    QLabel* roleLabel_;
+    QLabel* emailLabel_;
+    QLabel* uniIdLabel_;
 
     // editable
     QLineEdit* displayNameInput_;
@@ -51,4 +53,7 @@ private:
     QString token_;
     QString userId_;
     QString currentUsername_;
+
+    QNetworkAccessManager* netManager_ = nullptr;
+    void loadAvatarFromUrl(const QString& url);
 };

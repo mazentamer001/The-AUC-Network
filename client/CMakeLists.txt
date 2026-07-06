@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(Client LANGUAGES CXX)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 find_package(Threads REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
 
@@ -13,7 +13,6 @@ if(NOT TARGET Shared)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../shared ${CMAKE_CURRENT_BINARY_DIR}/shared)
 endif()
 
-# ── Client as a static lib so it's compiled once ──────────────────────────
 add_library(ClientLib STATIC src/Client.cpp)
 set_target_properties(ClientLib PROPERTIES AUTOMOC OFF)
 
@@ -23,12 +22,10 @@ target_include_directories(ClientLib PUBLIC
 
 target_link_libraries(ClientLib PUBLIC Boost::system Threads::Threads Shared)
 
-# ── Terminal client ────────────────────────────────────────────────────────
 add_executable(build001 src/main.cpp)
 set_target_properties(build001 PROPERTIES AUTOMOC OFF)
 target_link_libraries(build001 PRIVATE ClientLib)
 
-# ── GUI client ───────────────────────────────────────────────────────────
 add_executable(TestGUI
     TestGUIMain.cpp
     ui/MainWindow.cpp
@@ -49,4 +46,4 @@ target_include_directories(TestGUI PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(TestGUI PRIVATE Qt6::Widgets ClientLib)
+target_link_libraries(TestGUI PRIVATE Qt6::Widgets Qt6::Network ClientLib)

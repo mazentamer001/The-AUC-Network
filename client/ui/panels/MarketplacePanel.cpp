@@ -552,4 +552,13 @@ void MarketplacePanel::receiveMessage(const Message& msg)
         if (!roomId.isEmpty())
             emit openRoom(roomId);
     }
-}
+
+    if (msg.type == MessageType::MARKET_DELETE)
+    {
+        QString id = QString::fromStdString(msg.parentId);
+        listings_.remove(id);
+        auto existing = gridWidget_->findChildren<ListingCard*>();
+        for (auto* c : existing)
+            if (c->listingId() == id) { c->deleteLater(); break; }
+    }
+}   

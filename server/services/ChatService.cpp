@@ -36,6 +36,15 @@ void ChatService::handleCreate(const Message& msg, std::shared_ptr<Session> send
     { sendError("Room ID already exists", sender); return; }
 
     std::cout << "Room created: " << room.roomId << " (" << msg.role << ")\n";
+    Message notif;
+    notif.type   = MessageType::CHAT_CREATE;
+    notif.roomId = room.roomId;
+    notif.text   = room.name;
+    notif.role   = msg.role;
+    notif.sender.userId   = sender->userId();
+    notif.sender.username = msg.sender.username;
+    if (server_) server_->broadcast(notif, sender);
+
     sendOk("Room '" + room.name + "' created", sender); //tell the client the room is created successfully
 }
 

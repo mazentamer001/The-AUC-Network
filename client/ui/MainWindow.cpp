@@ -14,7 +14,7 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
 
     // ── networking — owned here, passed nowhere ───────────────────────────
     auto* io = new boost::asio::io_context();
-    client_  = new Client(*io, "127.0.0.1", "12345");
+    client_  = new Client(*io, "192.168.100.13", "12345");
 
     client_->setOnMessage([this](const Message& msg){
         QMetaObject::invokeMethod(this, [this, msg]{
