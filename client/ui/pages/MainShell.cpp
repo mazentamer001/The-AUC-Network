@@ -179,6 +179,7 @@ void MainShell::routeMessage(const Message& msg)
     {
     case MessageType::CHAT_PUBLIC:
     case MessageType::CHAT_PRIVATE:
+    case MessageType::CHAT_CREATE:
     case MessageType::JOIN:
     case MessageType::LEAVE:
     case MessageType::PRESENCE:
