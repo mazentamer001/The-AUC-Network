@@ -49,6 +49,14 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
 
     store_.addSession(token);                   //store the token
 
+    // kick any existing session for this account
+    if (server_) {
+        auto existing = server_->findSessionByUserId(userOpt->userId);
+        if (existing && existing != sender) {
+            existing->disconnect();
+        }
+    }
+
     sender->setUserId(userOpt->userId);                             //stores the logged-in user's ID inside the Session
     if (server_) server_->registerUser(userOpt->userId, sender);    //tell Server which userId maps to this socket
 

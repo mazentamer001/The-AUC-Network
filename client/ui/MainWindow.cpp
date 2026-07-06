@@ -89,7 +89,11 @@ void MainWindow::onMessage(const Message& msg)
             mainShell_->setCurrentUser(displayName_, userId_, username_, token_);
             showShell();
         } else if (!token_.isEmpty()) {
-            // already logged in — generic server confirmation, ignore silently
+            if (msg.text.find("logged out") != std::string::npos) {
+                token_.clear();
+                QMessageBox::information(this, "Session Ended", QString::fromStdString(msg.text));
+                showHome();
+            }
         } else {
             // registration success
             QMessageBox::information(this, "Account Created",

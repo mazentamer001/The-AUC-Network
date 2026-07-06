@@ -115,3 +115,19 @@ void Session::handle_error(const boost::system::error_code& ec)
     if (!userId_.empty())
         server_.unregisterUser(userId_);
 }
+
+void Session::disconnect()
+{
+    Message notice;
+    notice.type = MessageType::AUTH_RESPONSE;
+    notice.text = "You have been logged out because your account was signed in elsewhere.";
+    send(notice);
+
+    //give the write a moment to flush, then close the socket
+    auto self = shared_from_this();
+    boost::asio::post(socket_.get_executor(), [this, self]() {
+        boost::system::error_code ec;
+        socket_.shutdown(tcp::socket::shutdown_send, ec);
+        socket_.close(ec);
+    });
+}

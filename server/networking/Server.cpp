@@ -109,3 +109,11 @@ void Server::sendTo(const std::string& userId, const Message& msg)
     else
         userMap_.erase(it); // session died, clean up
 }
+
+std::shared_ptr<Session> Server::findSessionByUserId(const std::string& userId)
+{
+    std::lock_guard<std::mutex> lock(sessionsMutex_);
+    auto it = userMap_.find(userId);
+    if (it == userMap_.end()) return nullptr;
+    return it->second.lock();
+}

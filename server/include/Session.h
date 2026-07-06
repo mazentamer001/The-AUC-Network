@@ -29,7 +29,8 @@ public:
 
     void send(const Message& msg);
     void setUserId(const std::string& id) { userId_ = id; }
-    const std::string& userId() const     { return userId_; }
+    const std::string& userId() const { return userId_; }
+    void disconnect();
 
 private:
     void do_read();

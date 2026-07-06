@@ -34,6 +34,7 @@ public:
     void addSession(std::shared_ptr<Session> session);
     void registerUser(const std::string& userId, std::shared_ptr<Session> session);
     void unregisterUser(const std::string& userId);
+    std::shared_ptr<Session> findSessionByUserId(const std::string& userId);
 
 private:
     void do_accept();
