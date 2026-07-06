@@ -12,67 +12,61 @@
 
 namespace fs = std::filesystem;
 
-FileStorageService::FileStorageService(InMemoryStore& store,
-                                       const std::string& uploadDir)
-    : store_(store), uploadDir_(uploadDir)
+//takes the database and a folder where the uploaded files will be saved
+FileStorageService::FileStorageService(InMemoryStore& store, const std::string& uploadDir) : store_(store), uploadDir_(uploadDir)
 {
-    // Create uploads directory if it doesn't exist
     fs::create_directories(uploadDir_);
 }
 
-// ── upload a file ─────────────────────────────────────────────────────────────
-// The client sends:
+//upload a file
+//The client sends:
 //   msg.filename  = original filename  (e.g. "lecture_notes.pdf")
 //   msg.text      = base64-encoded file content
 //   msg.mediaUrl  = optional description
 //
-// Server saves to disk under uploads/ and records the URL.
+//server saves to disk under uploads/ and records the URL.
 void FileStorageService::handleUpload(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.filename.empty() || msg.text.empty())
     { sendError("filename and file content (text) are required", sender); return; }
 
-    std::string fileId   = generateId();
+    std::string fileId   = generateId();                //generate a unique ID name
     std::string saveName = fileId + "_" + msg.filename;
     std::string savePath = uploadDir_ + saveName;
 
-    // Decode base64 and write to disk
-    // For now we store the raw content — add proper base64 decode when
-    // integrating with the Qt client which can encode files before sending
+    //open file and write the recieved data and close the file
     std::ofstream out(savePath, std::ios::binary);
     if (!out.is_open())
     { sendError("Server could not save file", sender); return; }
     out << msg.text;
     out.close();
 
-    // Build the record
+    //build the record
     FileRecord record;
-    record.fileId          = fileId;
+    record.fileId = fileId;
     record.uploaderUserId  = sender->userId();
     record.uploaderUsername= msg.sender.username;
-    record.filename        = msg.filename;
-    record.url             = "files/" + saveName;  // relative URL served by server
-    record.fileSize        = std::to_string(msg.text.size()) + " bytes";
-    record.flagged         = false;
-    record.uploadedAt      = currentTimestamp();
+    record.filename = msg.filename;
+    record.url = "files/" + saveName;  // relative URL served by server
+    record.fileSize = std::to_string(msg.text.size()) + " bytes";
+    record.flagged = false;
+    record.uploadedAt = currentTimestamp();
 
     if (!store_.addFile(record))
     { sendError("Failed to register file", sender); return; }
 
-    std::cout << "File uploaded: " << record.filename
-              << " by " << record.uploaderUsername << "\n";
+    std::cout << "File uploaded: " << record.filename << " by " << record.uploaderUsername << "\n";
 
     Message resp;
-    resp.type     = MessageType::MATERIAL_UPLOAD;
+    resp.type = MessageType::MATERIAL_UPLOAD;
     resp.parentId = record.fileId;
     resp.filename = record.filename;
     resp.mediaUrl = record.url;
-    resp.text     = "File uploaded successfully";
+    resp.text = "File uploaded successfully";
     sender->send(resp);
 }
 
-// ── flag / report a file ──────────────────────────────────────────────────────
-// parentId = fileId, text = reason
+//report file
 void FileStorageService::handleReport(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.parentId.empty())
@@ -80,7 +74,7 @@ void FileStorageService::handleReport(const Message& msg, std::shared_ptr<Sessio
 
     std::string reason = msg.text.empty() ? "No reason provided" : msg.text;
 
-    if (!store_.flagFile(msg.parentId, reason))
+    if (!store_.flagFile(msg.parentId, reason))     //flag as reported
     { sendError("File not found", sender); return; }
 
     std::cout << "File flagged: " << msg.parentId
@@ -89,7 +83,7 @@ void FileStorageService::handleReport(const Message& msg, std::shared_ptr<Sessio
     sendOk("File reported. It will be reviewed by an admin.", sender);
 }
 
-// ── list all non-flagged files ────────────────────────────────────────────────
+//list all non-flagged files
 void FileStorageService::handleList(const Message& msg, std::shared_ptr<Session> sender)
 {
     auto files = store_.getAllFiles();
@@ -97,14 +91,14 @@ void FileStorageService::handleList(const Message& msg, std::shared_ptr<Session>
     for (auto& f : files)
     {
         Message resp;
-        resp.type            = MessageType::MATERIAL_UPLOAD;
-        resp.parentId        = f.fileId;
-        resp.filename        = f.filename;
-        resp.mediaUrl        = f.url;
-        resp.text            = f.fileSize;
-        resp.sender.userId   = f.uploaderUserId;
+        resp.type = MessageType::MATERIAL_UPLOAD;
+        resp.parentId = f.fileId;
+        resp.filename = f.filename;
+        resp.mediaUrl = f.url;
+        resp.text = f.fileSize;
+        resp.sender.userId = f.uploaderUserId;
         resp.sender.username = f.uploaderUsername;
-        resp.timestamp       = f.uploadedAt;
+        resp.timestamp = f.uploadedAt;
         sender->send(resp);
     }
 
@@ -112,7 +106,7 @@ void FileStorageService::handleList(const Message& msg, std::shared_ptr<Session>
         sendOk("No files available", sender);
 }
 
-// ── get one file record ───────────────────────────────────────────────────────
+//get one file record
 void FileStorageService::handleGetFile(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.parentId.empty())
@@ -123,18 +117,17 @@ void FileStorageService::handleGetFile(const Message& msg, std::shared_ptr<Sessi
     { sendError("File not found or has been removed", sender); return; }
 
     Message resp;
-    resp.type            = MessageType::MATERIAL_UPLOAD;
-    resp.parentId        = fileOpt->fileId;
-    resp.filename        = fileOpt->filename;
-    resp.mediaUrl        = fileOpt->url;
-    resp.text            = fileOpt->fileSize;
-    resp.sender.userId   = fileOpt->uploaderUserId;
+    resp.type = MessageType::MATERIAL_UPLOAD;
+    resp.parentId = fileOpt->fileId;
+    resp.filename = fileOpt->filename;
+    resp.mediaUrl = fileOpt->url;
+    resp.text = fileOpt->fileSize;
+    resp.sender.userId = fileOpt->uploaderUserId;
     resp.sender.username = fileOpt->uploaderUsername;
-    resp.timestamp       = fileOpt->uploadedAt;
+    resp.timestamp = fileOpt->uploadedAt;
     sender->send(resp);
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
 std::string FileStorageService::generateId()
 {
     std::random_device rd;

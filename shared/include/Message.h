@@ -1,26 +1,26 @@
-#ifndef MESSAGE_H
-#define MESSAGE_H
-
+#pragma once
 #include <string>
 
+//Message class is the common format the client and server use to communicate
+
 enum class MessageType {
-    // Auth
+    //auth
     AUTH_LOGIN, AUTH_REGISTER, AUTH_LOGOUT, AUTH_RESPONSE,
-    // Profile
+    //profile
     PROFILE_GET, PROFILE_EDIT,
-    // Chat
+    //chat
     CHAT_PUBLIC, CHAT_PRIVATE, CHAT_CREATE, CHAT_HISTORY,
-    // Presence
+    //presence
     PRESENCE, JOIN, LEAVE,
-    // Marketplace
+    //marketplace
     MARKET_POST, MARKET_DELETE, MARKET_SEARCH, MARKET_INQUIRY,
-    // Files
+    //files
     MATERIAL_UPLOAD, MATERIAL_REPORT, MATERIAL_LIST, MATERIAL_GET,
-    // Forum
+    //forum
     QA_QUESTION, QA_ANSWER, QA_FAQ, QA_GET_ALL, QA_GET_ONE,
-    // System
+    //system
     ERROR, UNKNOWN,
-    // Forum votes
+    //forum votes
     FORUM_UPVOTE, FORUM_DOWNVOTE
 };
 
@@ -60,6 +60,3 @@ struct Message {
     static std::string typeToString(MessageType t);
     static MessageType stringToType(const std::string& s);
 };
-
-#endif
-// note: FORUM_UPVOTE and FORUM_DOWNVOTE added below UNKNOWN

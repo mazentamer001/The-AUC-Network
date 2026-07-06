@@ -2,16 +2,18 @@
 #include <algorithm>
 #include <chrono>
 
-// ── users ─────────────────────────────────────────────────────────────────────
+//mostly CRUD operations
+
+//users
 bool InMemoryStore::addUser(const UserRecord& user)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (usernameIndex_.count(user.username))     return false;
-    if (emailIndex_.count(user.email))           return false;
+    if (usernameIndex_.count(user.username)) return false;
+    if (emailIndex_.count(user.email)) return false;
     if (universityIdIndex_.count(user.universityId)) return false;
-    users_[user.userId]                   = user;
-    usernameIndex_[user.username]         = user.userId;
-    emailIndex_[user.email]               = user.userId;
+    users_[user.userId] = user;
+    usernameIndex_[user.username] = user.userId;
+    emailIndex_[user.email] = user.userId;
     universityIdIndex_[user.universityId] = user.userId;
     return true;
 }
@@ -60,13 +62,19 @@ bool InMemoryStore::updateUser(const std::string& userId, const UserRecord& patc
     auto it = users_.find(userId);
     if (it == users_.end()) return false;
     UserRecord& u = it->second;
-    if (!patch.displayName.empty())   u.displayName   = patch.displayName;
-    if (!patch.bio.empty())           u.bio           = patch.bio;
+    if (!patch.displayName.empty()) u.displayName = patch.displayName;
+    if (!patch.bio.empty()) u.bio = patch.bio;
     if (!patch.profilePicUrl.empty()) u.profilePicUrl = patch.profilePicUrl;
+    if (!patch.passwordHash.empty()) u.passwordHash = patch.passwordHash;
+    if (!patch.username.empty() && patch.username != u.username) {
+        usernameIndex_.erase(u.username);
+        u.username = patch.username;
+        usernameIndex_[u.username] = userId;
+    }
     return true;
 }
 
-// ── sessions ──────────────────────────────────────────────────────────────────
+//sessions
 void InMemoryStore::addSession(const AuthToken& token)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -90,7 +98,7 @@ void InMemoryStore::removeSession(const std::string& sessionId)
     sessions_.erase(sessionId);
 }
 
-// ── chat rooms ────────────────────────────────────────────────────────────────
+//chat rooms
 bool InMemoryStore::createRoom(const ChatRoom& room)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -107,8 +115,7 @@ std::optional<ChatRoom> InMemoryStore::findRoom(const std::string& roomId)
     return it->second;
 }
 
-bool InMemoryStore::addMemberToRoom(const std::string& roomId,
-                                     const std::string& userId)
+bool InMemoryStore::addMemberToRoom(const std::string& roomId, const std::string& userId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = rooms_.find(roomId);
@@ -119,8 +126,7 @@ bool InMemoryStore::addMemberToRoom(const std::string& roomId,
     return true;
 }
 
-bool InMemoryStore::isMember(const std::string& roomId,
-                              const std::string& userId)
+bool InMemoryStore::isMember(const std::string& roomId, const std::string& userId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = rooms_.find(roomId);
@@ -131,15 +137,14 @@ bool InMemoryStore::isMember(const std::string& roomId,
     return std::find(members.begin(), members.end(), userId) != members.end();
 }
 
-bool InMemoryStore::addMessageToRoom(const std::string& roomId,
-                                      const ChatMessage& msg)
+bool InMemoryStore::addMessageToRoom(const std::string& roomId, const ChatMessage& msg)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = rooms_.find(roomId);
     if (it == rooms_.end()) return false;
     auto& history = it->second.history;
     history.push_back(msg);
-    if (history.size() > 100)           // keep last 100 messages
+    if (history.size() > 100)           //keep last 100 messages
         history.erase(history.begin());
     return true;
 }
@@ -162,7 +167,7 @@ std::vector<ChatRoom> InMemoryStore::getPublicRooms()
     return result;
 }
 
-// ── marketplace ───────────────────────────────────────────────────────────────
+//marketplace 
 bool InMemoryStore::addListing(const Listing& listing)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -201,19 +206,17 @@ std::vector<Listing> InMemoryStore::getListingsByUser(const std::string& userId)
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<Listing> result;
     for (auto& [id, listing] : listings_)
-        if (listing.sellerUserId == userId &&
-            listing.status != ListingStatus::DELETED)
+        if (listing.sellerUserId == userId && listing.status != ListingStatus::DELETED)
             result.push_back(listing);
     return result;
 }
 
-bool InMemoryStore::deleteListing(const std::string& listingId,
-                                   const std::string& requestingUserId)
+bool InMemoryStore::deleteListing(const std::string& listingId, const std::string& requestingUserId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = listings_.find(listingId);
     if (it == listings_.end()) return false;
-    if (it->second.sellerUserId != requestingUserId) return false; // not owner
+    if (it->second.sellerUserId != requestingUserId) return false; //not owner
     it->second.status = ListingStatus::DELETED;
     return true;
 }
@@ -227,7 +230,7 @@ bool InMemoryStore::markListingSold(const std::string& listingId)
     return true;
 }
 
-// ── forum ─────────────────────────────────────────────────────────────────────
+//forum
 bool InMemoryStore::addQuestion(const ForumQuestion& q)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -244,8 +247,7 @@ std::optional<ForumQuestion> InMemoryStore::findQuestion(const std::string& ques
     return it->second;
 }
 
-bool InMemoryStore::addAnswer(const std::string& questionId,
-                               const ForumAnswer& answer)
+bool InMemoryStore::addAnswer(const std::string& questionId, const ForumAnswer& answer)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = questions_.find(questionId);
@@ -254,9 +256,7 @@ bool InMemoryStore::addAnswer(const std::string& questionId,
     return true;
 }
 
-bool InMemoryStore::markAnswerFaq(const std::string& questionId,
-                                   const std::string& answerId,
-                                   const std::string& requestingUserId)
+bool InMemoryStore::markAnswerFaq(const std::string& questionId, const std::string& answerId, const std::string& requestingUserId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = questions_.find(questionId);
@@ -265,7 +265,7 @@ bool InMemoryStore::markAnswerFaq(const std::string& questionId,
     {
         if (a.answerId == answerId)
         {
-            // Only the answer's author can mark it as FAQ
+            //this should be changed to allow admins only to put it up in the FAQ
             if (a.authorUserId != requestingUserId) return false;
             a.isFaq = true;
             return true;
@@ -294,7 +294,7 @@ std::vector<ForumAnswer> InMemoryStore::getFaqAnswers(const std::string& questio
     return faqs;
 }
 
-// ── files ─────────────────────────────────────────────────────────────────────
+//files
 bool InMemoryStore::addFile(const FileRecord& file)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -330,23 +330,21 @@ bool InMemoryStore::flagFile(const std::string& fileId, const std::string& reaso
     return true;
 }
 
-bool InMemoryStore::voteQuestion(const std::string& questionId,
-                                  const std::string& userId, bool upvote)
+bool InMemoryStore::voteQuestion(const std::string& questionId, const std::string& userId, bool upvote)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = questions_.find(questionId);
     if (it == questions_.end()) return false;
     auto& q = it->second;
 
-    // remove opposite vote first
     if (upvote) {
-        if (q.upvoters.count(userId))   return false; // already upvoted
+        if (q.upvoters.count(userId))   return false; //already upvoted
         q.downvoters.erase(userId);
         if (q.downvotes > 0) q.downvotes--;
         q.upvoters.insert(userId);
         q.upvotes++;
     } else {
-        if (q.downvoters.count(userId)) return false; // already downvoted
+        if (q.downvoters.count(userId)) return false; //already downvoted
         q.upvoters.erase(userId);
         if (q.upvotes > 0) q.upvotes--;
         q.downvoters.insert(userId);
@@ -355,9 +353,7 @@ bool InMemoryStore::voteQuestion(const std::string& questionId,
     return true;
 }
 
-bool InMemoryStore::voteAnswer(const std::string& questionId,
-                                const std::string& answerId,
-                                const std::string& userId, bool upvote)
+bool InMemoryStore::voteAnswer(const std::string& questionId, const std::string& answerId, const std::string& userId, bool upvote)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = questions_.find(questionId);

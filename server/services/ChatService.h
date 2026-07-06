@@ -15,8 +15,8 @@ public:
     void handlePrivate(const Message& msg, std::shared_ptr<Session> sender);
     void handleJoin   (const Message& msg, std::shared_ptr<Session> sender);
     void handleLeave  (const Message& msg, std::shared_ptr<Session> sender);
-    void handleCreate (const Message& msg, std::shared_ptr<Session> sender); // create group
-    void handleHistory(const Message& msg, std::shared_ptr<Session> sender); // get history
+    void handleCreate (const Message& msg, std::shared_ptr<Session> sender);
+    void handleHistory(const Message& msg, std::shared_ptr<Session> sender);
 
 private:
     std::string generateId();
@@ -24,6 +24,6 @@ private:
     void sendError(const std::string& reason, std::shared_ptr<Session> sender);
     void sendOk   (const std::string& text,   std::shared_ptr<Session> sender);
 
-    Server*        server_ = nullptr;
+    Server*server_ = nullptr;
     InMemoryStore& store_;
 };

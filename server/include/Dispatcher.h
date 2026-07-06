@@ -29,8 +29,6 @@ class FileStorageService;
 class Dispatcher
 {
 public:
-    // Services injected at construction. Server back-filled via setServer()
-    // after Server is constructed (breaks the Server↔Dispatcher cycle).
     Dispatcher(AuthService&         auth,
                RegistrationService& registration,
                ProfileService&      profile,
@@ -40,26 +38,17 @@ public:
                FileStorageService&  fileStorage);
 
     void setServer(Server& server) { server_ = &server; }
-
-    // Called by Session after every successful deserialize
     void dispatch(const Message& msg, std::shared_ptr<Session> sender);
 
 private:
-    // ── auth check helper ──────────────────────────────────────────────────
-    // Returns true if msg.token resolves to a valid session.
-    // Sends an ERROR back and returns false if not.
     bool requireAuth(const Message& msg, std::shared_ptr<Session> sender);
-
-    // ── send helpers ───────────────────────────────────────────────────────
     void sendError(const std::string& reason, std::shared_ptr<Session> sender);
-
-    // ── service references (non-owning) ────────────────────────────────────
-    Server*              server_ = nullptr;
-    AuthService&         auth_;
+    Server* server_ = nullptr;
+    AuthService& auth_;
     RegistrationService& registration_;
-    ProfileService&      profile_;
-    ChatService&         chat_;
+    ProfileService& profile_;
+    ChatService& chat_;
     MarketplaceService&  marketplace_;
-    ForumService&        forum_;
-    FileStorageService&  fileStorage_;
+    ForumService& forum_;
+    FileStorageService& fileStorage_;
 };

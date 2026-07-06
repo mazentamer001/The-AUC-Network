@@ -18,6 +18,7 @@ class InMemoryStore;
 //    - bio         : optional
 //    - role        : always set to USER — never trust client-supplied role
 // ─────────────────────────────────────────────────────────────────────────────
+
 class RegistrationService
 {
 public:
@@ -26,19 +27,17 @@ public:
     void handleRegister(const Message& msg, std::shared_ptr<Session> sender);
 
 private:
-    // Returns an empty string if valid, or the error reason if not
+    //returns an empty string if valid, or the error reason if not
     std::string validate(const Message& msg);
 
-    // Minimal password hash — replace with bcrypt when adding real DB
+    //minimal password hash — replace with bcrypt when adding real DB
     std::string hashPassword(const std::string& plain);
 
-    // Generates a UUID-style userId
+    //generates a UUID-style userId
     std::string generateUserId();
 
-    void sendSuccess(const std::string& username,
-                     std::shared_ptr<Session> sender);
-    void sendError(const std::string& reason,
-                   std::shared_ptr<Session> sender);
+    void sendSuccess(const std::string& username, std::shared_ptr<Session> sender);
+    void sendError(const std::string& reason, std::shared_ptr<Session> sender);
 
     InMemoryStore& store_;
 };

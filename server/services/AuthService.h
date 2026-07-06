@@ -20,30 +20,23 @@ class InMemoryStore;
 //    - Registers userId → Session mapping in Server for direct routing
 //    - Sends AUTH_RESPONSE with the sessionId back to the client
 // ─────────────────────────────────────────────────────────────────────────────
+
 class AuthService
 {
 public:
     AuthService(InMemoryStore& store);
     void setServer(Server& server);
-
     void handleLogin (const Message& msg, std::shared_ptr<Session> sender);
     void handleLogout(const Message& msg, std::shared_ptr<Session> sender);
-
-    // Called by Dispatcher before routing any authenticated message
-    // Returns true if sessionId in token is valid and not expired
     bool validateToken(const std::string& sessionId);
 
 private:
     std::string generateSessionId();
-    std::string hashPassword(const std::string& plain); // must match Registration's hash
+    std::string hashPassword(const std::string& plain); //must match Registration's hash
 
-    void sendSuccess(const std::string& sessionId,
-                     const std::string& role,
-                     const std::string& displayName,
-                     std::shared_ptr<Session> sender);
-    void sendError  (const std::string& reason,
-                     std::shared_ptr<Session> sender);
+    void sendSuccess(const std::string& sessionId, const std::string& role, const std::string& displayName, std::shared_ptr<Session> sender);
+    void sendError  (const std::string& reason, std::shared_ptr<Session> sender);
 
     InMemoryStore& store_;
-    Server*        server_ = nullptr;
+    Server* server_ = nullptr;
 };

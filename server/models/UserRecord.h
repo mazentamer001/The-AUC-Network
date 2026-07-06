@@ -1,9 +1,6 @@
 #pragma once
 #include <string>
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Role
-// ─────────────────────────────────────────────────────────────────────────────
 enum class Role { USER, ADMIN };
 
 inline std::string roleToString(Role r)
@@ -29,7 +26,7 @@ struct UserRecord
     std::string email;           // unique, used for login
     std::string passwordHash;    // bcrypt hash — never store plain
     std::string universityId;    // 9 digits, starts with 900
-    Role        role;            // USER by default, ADMIN set manually
+    Role role;            // USER by default, ADMIN set manually
     std::string bio;             // optional
     std::string profilePicUrl;   // empty until user uploads one
     std::string createdAt;       // ISO-8601 timestamp

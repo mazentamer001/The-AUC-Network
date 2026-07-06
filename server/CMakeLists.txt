@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(AUCNetworking LANGUAGES CXX)
+project(Server LANGUAGES CXX)
 
 find_package(Boost REQUIRED COMPONENTS system)
 
@@ -8,7 +8,7 @@ if(NOT TARGET Shared)
 endif()
 
 add_executable(Server
-     src/main.cpp
+    src/main.cpp
     networking/Server.cpp
     networking/Session.cpp
     networking/Dispatcher.cpp
@@ -20,7 +20,6 @@ add_executable(Server
     services/ForumService.cpp
     services/FileStorageService.cpp
     store/InMemoryStore.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../shared/src/Message.cpp
 )
 
 target_include_directories(Server PRIVATE
@@ -30,7 +29,6 @@ target_include_directories(Server PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/store
     ${CMAKE_CURRENT_SOURCE_DIR}/networking
     ${CMAKE_CURRENT_SOURCE_DIR}/models
-    ${CMAKE_CURRENT_SOURCE_DIR}/../shared/include
 )
 
 target_link_libraries(Server PRIVATE Boost::system Shared)

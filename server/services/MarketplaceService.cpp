@@ -10,46 +10,45 @@
 #include <random>
 #include <sstream>
 
-MarketplaceService::MarketplaceService(InMemoryStore& store)
-    : store_(store)
-{}
+MarketplaceService::MarketplaceService(InMemoryStore& store) : store_(store) {}
 
-// ── post a listing ────────────────────────────────────────────────────────────
+//post a listing
 void MarketplaceService::handlePost(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.title.empty() || msg.price.empty())
     { sendError("title and price are required", sender); return; }
 
+    //create Listing
     Listing listing;
-    listing.listingId      = generateId();
-    listing.sellerUserId   = sender->userId();
+    listing.listingId = generateId();
+    listing.sellerUserId = sender->userId();
     listing.sellerUsername = msg.sender.username;
-    listing.title          = msg.title;
-    listing.description    = msg.text;
-    listing.price          = msg.price;
-    listing.mediaUrl       = msg.mediaUrl;
-    listing.status         = ListingStatus::ACTIVE;
-    listing.createdAt      = currentTimestamp();
+    listing.title = msg.title;
+    listing.description = msg.text;
+    listing.price = msg.price;
+    listing.mediaUrl = msg.mediaUrl;
+    listing.status = ListingStatus::ACTIVE;
+    listing.createdAt = currentTimestamp();
 
-    if (!store_.addListing(listing))
+    if (!store_.addListing(listing))    //store it 
     { sendError("Failed to create listing", sender); return; }
 
-    std::cout << "Listing created: " << listing.title
-              << " by " << listing.sellerUsername << "\n";
+    std::cout << "Listing created: " << listing.title << " by " << listing.sellerUsername << "\n";
 
+    //create confirmation message to client
     Message resp;
-    resp.type            = MessageType::MARKET_POST;
-    resp.parentId        = listing.listingId;
-    resp.title           = listing.title;
-    resp.price           = listing.price;
-    resp.text            = listing.description;
-    resp.mediaUrl        = listing.mediaUrl;
+    resp.type = MessageType::MARKET_POST;
+    resp.parentId = listing.listingId;
+    resp.title = listing.title;
+    resp.price = listing.price;
+    resp.text = listing.description;
+    resp.mediaUrl = listing.mediaUrl;
     resp.sender.username = listing.sellerUsername;
-    resp.sender.userId   = listing.sellerUserId;
+    resp.sender.userId = listing.sellerUserId;
     sender->send(resp);
 }
 
-// ── delete own listing ────────────────────────────────────────────────────────
+//delete own listing
 void MarketplaceService::handleDelete(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.parentId.empty())
@@ -61,7 +60,7 @@ void MarketplaceService::handleDelete(const Message& msg, std::shared_ptr<Sessio
     sendOk("Listing deleted", sender);
 }
 
-// ── search listings ───────────────────────────────────────────────────────────
+//search listings
 void MarketplaceService::handleSearch(const Message& msg, std::shared_ptr<Session> sender)
 {
     // msg.text is the search query — empty = return all active listings
@@ -70,15 +69,15 @@ void MarketplaceService::handleSearch(const Message& msg, std::shared_ptr<Sessio
     for (auto& l : listings)
     {
         Message resp;
-        resp.type          = MessageType::MARKET_POST;
-        resp.parentId      = l.listingId;
-        resp.title         = l.title;
-        resp.text          = l.description;
-        resp.price         = l.price;
-        resp.mediaUrl      = l.mediaUrl;
-        resp.sender.userId   = l.sellerUserId;
+        resp.type = MessageType::MARKET_POST;
+        resp.parentId = l.listingId;
+        resp.title = l.title;
+        resp.text = l.description;
+        resp.price = l.price;
+        resp.mediaUrl = l.mediaUrl;
+        resp.sender.userId = l.sellerUserId;
         resp.sender.username = l.sellerUsername;
-        resp.timestamp     = l.createdAt;
+        resp.timestamp = l.createdAt;
         sender->send(resp);
     }
 
@@ -86,9 +85,9 @@ void MarketplaceService::handleSearch(const Message& msg, std::shared_ptr<Sessio
         sendOk("No listings found", sender);
 }
 
-// ── inquiry / buy ─────────────────────────────────────────────────────────────
-// Opens a 1-on-1 direct chat room between buyer and seller,
-// then sends the seller a notification with the listing details.
+//inquiry / buy
+//Opens a 1-on-1 direct chat room between buyer and seller
+//then sends the seller a notification with the listing details
 void MarketplaceService::handleInquiry(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.parentId.empty())
@@ -104,41 +103,39 @@ void MarketplaceService::handleInquiry(const Message& msg, std::shared_ptr<Sessi
     if (listingOpt->sellerUserId == sender->userId())
     { sendError("You cannot inquire on your own listing", sender); return; }
 
-    // Build deterministic direct room ID between buyer and seller
+    //build deterministic direct room ID between buyer and seller (same in chatservice)
     std::string uid1 = sender->userId();
     std::string uid2 = listingOpt->sellerUserId;
     if (uid1 > uid2) std::swap(uid1, uid2);
     std::string directRoomId = "direct:" + uid1 + ":" + uid2;
 
-    // Auto-create if not exists
+    //create if not exists
     if (!store_.findRoom(directRoomId))
     {
         ChatRoom room;
-        room.roomId    = directRoomId;
-        room.name      = "Direct";
-        room.type      = RoomType::DIRECT;
+        room.roomId = directRoomId;
+        room.name = "Direct";
+        room.type = RoomType::DIRECT;
         room.creatorId = sender->userId();
         room.memberIds = { uid1, uid2 };
         room.createdAt = currentTimestamp();
         store_.createRoom(room);
     }
 
-    // Notify seller via direct message
+    //notify seller via direct message
     Message notif;
-    notif.type            = MessageType::MARKET_INQUIRY;
-    notif.roomId          = directRoomId;
-    notif.sender.userId   = sender->userId();
+    notif.type = MessageType::MARKET_INQUIRY;
+    notif.roomId = directRoomId;
+    notif.sender.userId = sender->userId();
     notif.sender.username = msg.sender.username;
-    notif.title           = listingOpt->title;
-    notif.price           = listingOpt->price;
-    notif.text            = msg.text.empty()
-                            ? msg.sender.username + " is interested in your listing: " + listingOpt->title
-                            : msg.text;
-    notif.timestamp       = currentTimestamp();
+    notif.title = listingOpt->title;
+    notif.price = listingOpt->price;
+    notif.text = msg.text.empty() ? msg.sender.username + " is interested in your listing: " + listingOpt->title : msg.text;
+    notif.timestamp = currentTimestamp();
 
     if(server_) server_->sendTo(listingOpt->sellerUserId, notif);
 
-    // Confirm to buyer with the room ID so they can follow up
+    //confirm to buyer with the room ID so they can follow up
     Message confirm;
     confirm.type    = MessageType::MARKET_INQUIRY;
     confirm.text    = "Inquiry sent to seller. Use roomId to continue the chat.";
@@ -146,7 +143,6 @@ void MarketplaceService::handleInquiry(const Message& msg, std::shared_ptr<Sessi
     sender->send(confirm);
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
 std::string MarketplaceService::generateId()
 {
     std::random_device rd;

@@ -25,12 +25,13 @@ Dispatcher::Dispatcher(AuthService&         auth,
 
 void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
 {
+    //for debugging
     std::cout << "Dispatcher received type: " 
               << Message::typeToString(msg.type) 
               << " (raw string from client: " << msg.role << ")" 
               << std::endl;
 
-    // ── no token required ──────────────────────────────────────────────────
+    //no token required
     switch (msg.type)
     {
     case MessageType::AUTH_LOGIN:

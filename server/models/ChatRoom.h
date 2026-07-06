@@ -15,11 +15,11 @@ struct ChatMessage {
 };
 
 struct ChatRoom {
-    std::string            roomId;
-    std::string            name;
-    RoomType               type;
-    std::string            creatorId;
-    std::vector<std::string> memberIds;   // empty = public (anyone can join)
-    std::vector<ChatMessage> history;     // last 100 messages
-    std::string            createdAt;
+    std::string roomId;
+    std::string name;
+    RoomType type;
+    std::string creatorId;
+    std::vector<std::string> memberIds;   //empty = public (anyone can join)
+    std::vector<ChatMessage> history;     //last 100 messages
+    std::string createdAt;
 };

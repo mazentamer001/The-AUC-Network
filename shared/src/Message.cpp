@@ -76,6 +76,7 @@ MessageType Message::stringToType(const std::string& s)
     return MessageType::UNKNOWN;
 }
 
+//converts a Message into a json
 std::string Message::serialize() const
 {
     json j;
@@ -104,6 +105,7 @@ std::string Message::serialize() const
     return j.dump() + "\n";
 }
 
+//converts a json into a message object
 Message Message::deserialize(const std::string& raw)
 {
     json j;

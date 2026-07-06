@@ -11,87 +11,79 @@
 #include "models/FileRecord.h"
 #include "AuthToken.h"
 
+
+//an in memory database
 class InMemoryStore
 {
 public:
-    // ── users ─────────────────────────────────────────────────────────────
-    bool                      addUser(const UserRecord& user);
+
+    //users
+    bool addUser(const UserRecord& user);
     std::optional<UserRecord> findUserById(const std::string& userId);
     std::optional<UserRecord> findUserByUsername(const std::string& username);
     std::optional<UserRecord> findUserByEmail(const std::string& email);
     std::optional<UserRecord> findUserByUniversityId(const std::string& uniId);
-    bool                      updateUser(const std::string& userId, const UserRecord& patch);
+    bool updateUser(const std::string& userId, const UserRecord& patch);
 
-    // ── sessions ──────────────────────────────────────────────────────────
-    void                     addSession(const AuthToken& token);
+    //sessions
+    void addSession(const AuthToken& token);
     std::optional<AuthToken> findSession(const std::string& sessionId);
-    void                     removeSession(const std::string& sessionId);
+    void removeSession(const std::string& sessionId);
 
-    // ── chat rooms ────────────────────────────────────────────────────────
-    bool                      createRoom(const ChatRoom& room);
-    std::optional<ChatRoom>   findRoom(const std::string& roomId);
-    bool                      addMemberToRoom(const std::string& roomId,
-                                              const std::string& userId);
-    bool                      isMember(const std::string& roomId,
-                                       const std::string& userId);
-    bool                      addMessageToRoom(const std::string& roomId,
-                                               const ChatMessage& msg);
-    std::vector<ChatMessage>  getRoomHistory(const std::string& roomId);
-    std::vector<ChatRoom>     getPublicRooms();
+    //chat rooms
+    bool createRoom(const ChatRoom& room);
+    std::optional<ChatRoom> findRoom(const std::string& roomId);
+    bool addMemberToRoom(const std::string& roomId, const std::string& userId);
+    bool isMember(const std::string& roomId, const std::string& userId);
+    bool addMessageToRoom(const std::string& roomId, const ChatMessage& msg);
+    std::vector<ChatMessage> getRoomHistory(const std::string& roomId);
+    std::vector<ChatRoom> getPublicRooms();
 
-    // ── marketplace ───────────────────────────────────────────────────────
-    bool                      addListing(const Listing& listing);
-    std::optional<Listing>    findListing(const std::string& listingId);
-    std::vector<Listing>      searchListings(const std::string& query);
-    std::vector<Listing>      getListingsByUser(const std::string& userId);
-    bool                      deleteListing(const std::string& listingId,
-                                            const std::string& requestingUserId);
-    bool                      markListingSold(const std::string& listingId);
+    // marketplace
+    bool addListing(const Listing& listing);
+    std::optional<Listing> findListing(const std::string& listingId);
+    std::vector<Listing> searchListings(const std::string& query);
+    std::vector<Listing> getListingsByUser(const std::string& userId);
+    bool deleteListing(const std::string& listingId, const std::string& requestingUserId);
+    bool markListingSold(const std::string& listingId);
 
     // ── forum ─────────────────────────────────────────────────────────────
-    bool                         addQuestion(const ForumQuestion& q);
+    bool addQuestion(const ForumQuestion& q);
     std::optional<ForumQuestion> findQuestion(const std::string& questionId);
-    bool                         addAnswer(const std::string& questionId,
-                                           const ForumAnswer& answer);
-    bool                         markAnswerFaq(const std::string& questionId,
-                                               const std::string& answerId,
-                                               const std::string& requestingUserId);
-    std::vector<ForumQuestion>   getAllQuestions();
-    std::vector<ForumAnswer>     getFaqAnswers(const std::string& questionId);
-    bool                         voteQuestion(const std::string& questionId,
-                                            const std::string& userId, bool upvote);
-    bool                         voteAnswer(const std::string& questionId,
-                                            const std::string& answerId,
-                                            const std::string& userId, bool upvote);
+    bool addAnswer(const std::string& questionId, const ForumAnswer& answer);
+    bool markAnswerFaq(const std::string& questionId, const std::string& answerId, const std::string& requestingUserId);
+    std::vector<ForumQuestion> getAllQuestions();
+    std::vector<ForumAnswer> getFaqAnswers(const std::string& questionId);
+    bool voteQuestion(const std::string& questionId, const std::string& userId, bool upvote);
+    bool voteAnswer(const std::string& questionId, const std::string& answerId, const std::string& userId, bool upvote);
 
-    // ── files ─────────────────────────────────────────────────────────────
-    bool                       addFile(const FileRecord& file);
-    std::optional<FileRecord>  findFile(const std::string& fileId);
-    std::vector<FileRecord>    getAllFiles();
-    bool                       flagFile(const std::string& fileId,
-                                        const std::string& reason);
+    //files
+    bool addFile(const FileRecord& file);
+    std::optional<FileRecord> findFile(const std::string& fileId);
+    std::vector<FileRecord> getAllFiles();
+    bool flagFile(const std::string& fileId, const std::string& reason);
 
 private:
     std::mutex mutex_;
 
-    // users
+    //users
     std::unordered_map<std::string, UserRecord>  users_;
     std::unordered_map<std::string, std::string> usernameIndex_;
     std::unordered_map<std::string, std::string> emailIndex_;
     std::unordered_map<std::string, std::string> universityIdIndex_;
 
-    // sessions
+    //sessions
     std::unordered_map<std::string, AuthToken> sessions_;
 
-    // chat
+    //chat
     std::unordered_map<std::string, ChatRoom> rooms_;
 
-    // marketplace
+    //marketplace
     std::unordered_map<std::string, Listing> listings_;
 
-    // forum
+    //forum
     std::unordered_map<std::string, ForumQuestion> questions_;
 
-    // files
+    //files
     std::unordered_map<std::string, FileRecord> files_;
 };

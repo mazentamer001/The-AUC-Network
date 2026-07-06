@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
-project(AUCNetworking)
+project(Shared LANGUAGES CXX)
 
 find_package(Qt6 REQUIRED COMPONENTS Core)
+
 find_package(nlohmann_json 3.2.0 QUIET)
 if(NOT TARGET nlohmann_json::nlohmann_json)
     include(FetchContent)
@@ -14,7 +15,7 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
 endif()
 
 add_library(Shared STATIC src/Message.cpp)
+
 target_include_directories(Shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 target_link_libraries(Shared PUBLIC Qt6::Core nlohmann_json::nlohmann_json)
-find_package(nlohmann_json REQUIRED)
-target_link_libraries(Shared PUBLIC nlohmann_json::nlohmann_json)

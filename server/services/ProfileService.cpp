@@ -1,21 +1,22 @@
 #include "services/ProfileService.h"
 #include "store/InMemoryStore.h"
 #include "Session.h"
+#include <functional>
 #include <iostream>
+#include <sstream>
 
+//constructor
 ProfileService::ProfileService(InMemoryStore& store) : store_(store) {}
 
-// ── get any user's profile ────────────────────────────────────────────────────
+//get own profile
 void ProfileService::handleGet(const Message& msg, std::shared_ptr<Session> sender)
 {
-    // If no userId supplied, return the caller's own profile
+    //recipientId empty = get own profile
     std::string targetId = msg.recipientId.empty() ? sender->userId() : msg.recipientId;
 
     auto userOpt = store_.findUserById(targetId);
-    if (!userOpt)
-    { sendError("User not found", sender); return; }
+    if (!userOpt) { sendError("User not found", sender); return; }
 
-    // Build response — never send passwordHash or universityId to client
     Message resp;
     resp.type          = MessageType::PROFILE_GET;
     resp.sender.userId = userOpt->userId;
@@ -24,20 +25,55 @@ void ProfileService::handleGet(const Message& msg, std::shared_ptr<Session> send
     resp.role          = roleToString(userOpt->role);
     resp.bio           = userOpt->bio;
     resp.profilePicUrl = userOpt->profilePicUrl;
+    resp.email         = userOpt->email;
+    resp.universityId  = userOpt->universityId;
     sender->send(resp);
 }
 
-// ── edit own profile ──────────────────────────────────────────────────────────
+//edit own profile
 void ProfileService::handleEdit(const Message& msg, std::shared_ptr<Session> sender)
 {
-    // Only edit your own profile — admins have no special edit rights here
-    UserRecord patch;
-    patch.displayName   = msg.displayName;
-    patch.bio           = msg.bio;
-    patch.profilePicUrl = msg.profilePicUrl;
+    auto userOpt = store_.findUserById(sender->userId());
+    if (!userOpt) { sendError("User not found", sender); return; }
 
-    if (!store_.updateUser(sender->userId(), patch))
-    { sendError("Failed to update profile", sender); return; }
+    UserRecord patch;
+
+    //display name
+    if (!msg.displayName.empty())
+        patch.displayName = msg.displayName;
+
+    //bio
+    if (!msg.bio.empty())
+        patch.bio = msg.bio;
+
+    //profile pic
+    if (!msg.profilePicUrl.empty())
+        patch.profilePicUrl = msg.profilePicUrl;
+
+    //username change
+    if (!msg.username.empty() && msg.username != userOpt->username) {
+        //check uniqueness
+        if (store_.findUserByUsername(msg.username)) {
+            sendError("Username already taken", sender); return;
+        }
+        patch.username = msg.username;
+    }
+
+    //password change - msg.text = current password, msg.password = new password
+    if (!msg.password.empty()) {
+        if (msg.text.empty()) { sendError("Current password required", sender); return; }
+        if (hashPassword(msg.text) != userOpt->passwordHash) {
+            sendError("Current password is incorrect", sender); return;
+        }
+        if (msg.password.size() < 8) {
+            sendError("Password must be at least 8 characters", sender); return;
+        }
+        patch.passwordHash = hashPassword(msg.password);
+    }
+
+    if (!store_.updateUser(sender->userId(), patch)) {
+        sendError("Failed to update profile", sender); return;
+    }
 
     std::cout << "Profile updated: " << sender->userId() << "\n";
 
@@ -45,6 +81,14 @@ void ProfileService::handleEdit(const Message& msg, std::shared_ptr<Session> sen
     resp.type = MessageType::PROFILE_EDIT;
     resp.text = "Profile updated successfully";
     sender->send(resp);
+}
+
+std::string ProfileService::hashPassword(const std::string& plain)
+{
+    std::hash<std::string> hasher;
+    std::ostringstream oss;
+    oss << std::hex << hasher(plain);
+    return oss.str();
 }
 
 void ProfileService::sendError(const std::string& reason, std::shared_ptr<Session> sender)

@@ -6,9 +6,9 @@ struct FileRecord {
     std::string uploaderUserId;
     std::string uploaderUsername;
     std::string filename;
-    std::string url;           // served from server/uploads/
+    std::string url; //served from server/uploads/
     std::string fileSize;
-    bool        flagged = false;
+    bool flagged = false;
     std::string flagReason;
     std::string uploadedAt;
 };
