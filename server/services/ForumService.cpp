@@ -2,6 +2,7 @@
 #include "store/InMemoryStore.h"
 #include "models/ForumPost.h"
 #include "Session.h"
+#include "Server.h"
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -37,6 +38,7 @@ void ForumService::handleQuestion(const Message& msg, std::shared_ptr<Session> s
     resp.sender.username = q.authorUsername;
     resp.timestamp = q.timestamp;
     sender->send(resp);     //send confirmation message to client
+    if (server_) server_->broadcast(resp, sender);  //broadcast
 }
 
 //post an answer
@@ -70,6 +72,7 @@ void ForumService::handleAnswer(const Message& msg, std::shared_ptr<Session> sen
     resp.sender.username = answer.authorUsername;
     resp.timestamp = answer.timestamp;
     sender->send(resp);
+    if (server_) server_->broadcast(resp, sender);
 }
 
 // mark own answer as FAQ will be changed later perhaps
@@ -168,15 +171,14 @@ void ForumService::handleVote(const Message& msg, std::shared_ptr<Session> sende
     if (!qOpt) return;
 
     if (msg.filename.empty()) {
-        //question vote - send updated question
         Message resp;
         resp.type = MessageType::QA_QUESTION;
         resp.parentId = qOpt->questionId;
         resp.text = "vote_update";
         resp.role = std::to_string(qOpt->upvotes) + ":" + std::to_string(qOpt->downvotes);
         sender->send(resp);
+        if (server_) server_->broadcast(resp, sender);
     } else {
-        //answer vote - find updated answer
         for (auto& a : qOpt->answers) {
             if (a.answerId == msg.filename) {
                 Message resp;
@@ -186,6 +188,7 @@ void ForumService::handleVote(const Message& msg, std::shared_ptr<Session> sende
                 resp.text = "vote_update";
                 resp.role = std::to_string(a.upvotes) + ":" + std::to_string(a.downvotes);
                 sender->send(resp);
+                if (server_) server_->broadcast(resp, sender);
                 break;
             }
         }
