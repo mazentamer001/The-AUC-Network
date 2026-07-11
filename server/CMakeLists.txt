@@ -19,6 +19,7 @@ add_executable(Server
     services/ChatService.cpp
     services/MarketplaceService.cpp
     services/ForumService.cpp
+    services/AIService.cpp
     services/FileStorageService.cpp
     store/InMemoryStore.cpp
     store/Database.cpp
