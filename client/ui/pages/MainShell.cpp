@@ -153,6 +153,7 @@ void MainShell::routeMessage(const Message& msg)
 {
     switch (msg.type)
     {
+    case MessageType::CHAT_SUMMARIZE:
     case MessageType::CHAT_PUBLIC:
     case MessageType::CHAT_PRIVATE:
     case MessageType::CHAT_CREATE:

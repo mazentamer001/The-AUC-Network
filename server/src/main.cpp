@@ -25,7 +25,7 @@ int main()
         AuthService         auth(store);
         RegistrationService registration(store);
         ProfileService      profile(store);
-        ChatService         chat(store);
+        ChatService         chat(store, ai);
         MarketplaceService  marketplace(store);
         ForumService        forum(store, ai);
         FileStorageService  fileStorage(store);

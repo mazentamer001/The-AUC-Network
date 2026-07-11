@@ -1,6 +1,7 @@
 #include "services/AIService.h"
 #include <vector>
 #include <random>
+#include <sstream>
 
 std::string AIService::suggestForumAnswer(const std::string& title, const std::string& text)
 {
@@ -14,4 +15,19 @@ std::string AIService::suggestForumAnswer(const std::string& title, const std::s
     std::mt19937 gen(rd());
     std::uniform_int_distribution<size_t> dist(0, templates.size() - 1);
     return templates[dist(gen)];
+}
+
+std::string AIService::summarizeChat(const std::vector<std::string>& messages)
+{
+    if (messages.empty())
+        return "There are no messages in this room yet to summarize.";
+
+    std::ostringstream oss;
+    oss << "Summary of the last " << messages.size() << " message(s) in this room: ";
+    oss << "the conversation covered " << messages.size()
+        << " exchange(s) between participants. ";
+    oss << "Most recent topic: \"" << messages.back().substr(0, 80)
+        << (messages.back().size() > 80 ? "..." : "") << "\"";
+
+    return oss.str();
 }

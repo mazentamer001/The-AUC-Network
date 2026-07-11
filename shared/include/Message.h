@@ -9,7 +9,7 @@ enum class MessageType {
     //profile
     PROFILE_GET, PROFILE_EDIT,
     //chat
-    CHAT_PUBLIC, CHAT_PRIVATE, CHAT_CREATE, CHAT_HISTORY,
+    CHAT_PUBLIC, CHAT_PRIVATE, CHAT_CREATE, CHAT_HISTORY, CHAT_SUMMARIZE,
     //presence
     PRESENCE, JOIN, LEAVE,
     //marketplace

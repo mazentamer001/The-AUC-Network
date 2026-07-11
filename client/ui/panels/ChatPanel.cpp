@@ -19,7 +19,6 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
-    // ── sidebar ──────────────────────────────────────────────────────────
     auto* sidebar = new QWidget;
     sidebar->setObjectName("chatSidebar");
     sidebar->setFixedWidth(240);
@@ -56,7 +55,6 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     sideLayout->addWidget(roomIdInput_);
     sideLayout->addWidget(btnCreate);
 
-    // ── main chat area ───────────────────────────────────────────────────
     auto* chatMain = new QWidget;
     chatMain->setStyleSheet("background: transparent; border: none;");
     auto* chatLayout = new QVBoxLayout(chatMain);
@@ -74,7 +72,17 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     topLayout->setContentsMargins(24, 0, 24, 0);
     currentRoomLabel_ = new QLabel("Select a room");
     currentRoomLabel_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::bodyText()));
+
+    auto* btnSummarize = new QPushButton("Summarize");
+    btnSummarize->setFixedHeight(32);
+    btnSummarize->setStyleSheet(QString(
+        "QPushButton { background: %1; color: %2; border: 1px solid %3; border-radius: 8px; padding: 4px 14px; font-size: 12px; font-weight: 500; }"
+        "QPushButton:hover { background: %4; }"
+    ).arg(Theme::SURFACE, Theme::ACCENT, Theme::BORDER, Theme::SURFACE_ALT));
+
     topLayout->addWidget(currentRoomLabel_);
+    topLayout->addStretch();
+    topLayout->addWidget(btnSummarize);
 
     chatStack_ = new QStackedWidget;
     chatStack_->setStyleSheet("background: transparent; border: none;");
@@ -114,10 +122,20 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     root->addWidget(sidebar);
     root->addWidget(chatMain, 1);
 
-    // ── connections ──────────────────────────────────────────────────────
     connect(btnSend,       &QPushButton::clicked,     this, &ChatPanel::onSend);
     connect(messageInput_, &QLineEdit::returnPressed, this, &ChatPanel::onSend);
     connect(btnCreate,     &QPushButton::clicked,     this, &ChatPanel::onCreateRoom);
+    connect(btnSummarize,  &QPushButton::clicked,     this, [this](){
+        if (currentRoom_.isEmpty()) {
+            QMessageBox::warning(this, "No room selected", "Join or create a room first.");
+            return;
+        }
+        Message msg;
+        msg.type            = MessageType::CHAT_SUMMARIZE;
+        msg.roomId          = currentRoom_.toStdString();
+        msg.sender.username = displayName_.toStdString();
+        emit messageSent(msg);
+    });
 
     connect(roomList_, &QListWidget::currentTextChanged, this, [this](const QString& room){
         if (room.isEmpty()) return;
@@ -135,7 +153,7 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
 
 void ChatPanel::setCurrentUser(const QString& displayName, const QString& userId)
 {
-     displayName_ = displayName;
+    displayName_ = displayName;
     userId_      = userId;
 }
 
@@ -211,6 +229,11 @@ void ChatPanel::receiveMessage(const Message& msg)
     QString sender = QString::fromStdString(msg.sender.username);
     QString text   = QString::fromStdString(msg.text);
 
+    if (msg.type == MessageType::CHAT_SUMMARIZE) {
+        appendChat(room, "AI Summary", text);
+        return;
+    }
+
     if (msg.type == MessageType::CHAT_CREATE) {
         if (!room.isEmpty() && msg.role != "DIRECT" && roomList_->findItems(room, Qt::MatchExactly).isEmpty())
             roomList_->addItem(room);
@@ -252,10 +275,11 @@ void ChatPanel::appendChat(const QString& room, const QString& sender, const QSt
         chatStack_->addWidget(view);
     }
 
-    bool isSystem = (sender == "System");
-    bool isMe     = (sender == displayName_);
+    bool isSystem  = (sender == "System");
+    bool isAI      = (sender == "AI Summary");
+    bool isMe      = (sender == displayName_);
 
-    QString color = isSystem ? Theme::TEXT_SECONDARY : isMe ? Theme::TEXT_PRIMARY : Theme::ACCENT;
+    QString color = isAI ? Theme::ACCENT2 : isSystem ? Theme::TEXT_SECONDARY : isMe ? Theme::TEXT_PRIMARY : Theme::ACCENT;
 
     auto* view = roomViews_[room];
     view->append(

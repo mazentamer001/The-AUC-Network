@@ -65,6 +65,8 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
         chat_.handlePrivate(msg, sender);          break;
     case MessageType::CHAT_HISTORY:
         chat_.handleHistory(msg, sender);          break;
+    case MessageType::CHAT_SUMMARIZE:
+        chat_.handleSummarize(msg, sender);        break;
     case MessageType::JOIN:
         chat_.handleJoin(msg, sender);             break;
     case MessageType::LEAVE:

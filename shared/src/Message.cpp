@@ -17,6 +17,7 @@ std::string Message::typeToString(MessageType t)
     case MessageType::CHAT_PRIVATE:     return "CHAT_PRIVATE";
     case MessageType::CHAT_CREATE:      return "CHAT_CREATE";
     case MessageType::CHAT_HISTORY:     return "CHAT_HISTORY";
+    case MessageType::CHAT_SUMMARIZE:   return "CHAT_SUMMARIZE";
     case MessageType::PRESENCE:         return "PRESENCE";
     case MessageType::JOIN:             return "JOIN";
     case MessageType::LEAVE:            return "LEAVE";
@@ -52,6 +53,7 @@ MessageType Message::stringToType(const std::string& s)
     if (s == "CHAT_PRIVATE")    return MessageType::CHAT_PRIVATE;
     if (s == "CHAT_CREATE")     return MessageType::CHAT_CREATE;
     if (s == "CHAT_HISTORY")    return MessageType::CHAT_HISTORY;
+    if (s == "CHAT_SUMMARIZE")  return MessageType::CHAT_SUMMARIZE;
     if (s == "PRESENCE")        return MessageType::PRESENCE;
     if (s == "JOIN")            return MessageType::JOIN;
     if (s == "LEAVE")           return MessageType::LEAVE;
