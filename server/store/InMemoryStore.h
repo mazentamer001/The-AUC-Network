@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -10,14 +11,15 @@
 #include "models/ForumPost.h"
 #include "models/FileRecord.h"
 #include "AuthToken.h"
+#include "store/Database.h"
 
-
-//an in memory database
+//users now persist to SQLite via Database; everything else stays in-memory
 class InMemoryStore
 {
 public:
+    InMemoryStore();
 
-    //users
+    //users — now backed by SQLite
     bool addUser(const UserRecord& user);
     std::optional<UserRecord> findUserById(const std::string& userId);
     std::optional<UserRecord> findUserByUsername(const std::string& username);
@@ -65,12 +67,7 @@ public:
 
 private:
     std::mutex mutex_;
-
-    //users
-    std::unordered_map<std::string, UserRecord>  users_;
-    std::unordered_map<std::string, std::string> usernameIndex_;
-    std::unordered_map<std::string, std::string> emailIndex_;
-    std::unordered_map<std::string, std::string> universityIdIndex_;
+    std::unique_ptr<Database> db_;
 
     //sessions
     std::unordered_map<std::string, AuthToken> sessions_;

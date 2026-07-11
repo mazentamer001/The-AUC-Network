@@ -2,76 +2,39 @@
 #include <algorithm>
 #include <chrono>
 
-//mostly CRUD operations
+InMemoryStore::InMemoryStore()
+    : db_(std::make_unique<Database>("auc_network.db"))
+{}
 
-//users
+//users — delegate to SQLite
 bool InMemoryStore::addUser(const UserRecord& user)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (usernameIndex_.count(user.username)) return false;
-    if (emailIndex_.count(user.email)) return false;
-    if (universityIdIndex_.count(user.universityId)) return false;
-    users_[user.userId] = user;
-    usernameIndex_[user.username] = user.userId;
-    emailIndex_[user.email] = user.userId;
-    universityIdIndex_[user.universityId] = user.userId;
-    return true;
+    return db_->addUser(user);
 }
 
 std::optional<UserRecord> InMemoryStore::findUserById(const std::string& userId)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = users_.find(userId);
-    if (it == users_.end()) return std::nullopt;
-    return it->second;
+    return db_->findUserById(userId);
 }
 
 std::optional<UserRecord> InMemoryStore::findUserByUsername(const std::string& username)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto idx = usernameIndex_.find(username);
-    if (idx == usernameIndex_.end()) return std::nullopt;
-    auto it = users_.find(idx->second);
-    if (it == users_.end()) return std::nullopt;
-    return it->second;
+    return db_->findUserByUsername(username);
 }
 
 std::optional<UserRecord> InMemoryStore::findUserByEmail(const std::string& email)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto idx = emailIndex_.find(email);
-    if (idx == emailIndex_.end()) return std::nullopt;
-    auto it = users_.find(idx->second);
-    if (it == users_.end()) return std::nullopt;
-    return it->second;
+    return db_->findUserByEmail(email);
 }
 
 std::optional<UserRecord> InMemoryStore::findUserByUniversityId(const std::string& uniId)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto idx = universityIdIndex_.find(uniId);
-    if (idx == universityIdIndex_.end()) return std::nullopt;
-    auto it = users_.find(idx->second);
-    if (it == users_.end()) return std::nullopt;
-    return it->second;
+    return db_->findUserByUniversityId(uniId);
 }
 
 bool InMemoryStore::updateUser(const std::string& userId, const UserRecord& patch)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = users_.find(userId);
-    if (it == users_.end()) return false;
-    UserRecord& u = it->second;
-    if (!patch.displayName.empty()) u.displayName = patch.displayName;
-    if (!patch.bio.empty()) u.bio = patch.bio;
-    if (!patch.profilePicUrl.empty()) u.profilePicUrl = patch.profilePicUrl;
-    if (!patch.passwordHash.empty()) u.passwordHash = patch.passwordHash;
-    if (!patch.username.empty() && patch.username != u.username) {
-        usernameIndex_.erase(u.username);
-        u.username = patch.username;
-        usernameIndex_[u.username] = userId;
-    }
-    return true;
+    return db_->updateUser(userId, patch);
 }
 
 //sessions
@@ -131,7 +94,6 @@ bool InMemoryStore::isMember(const std::string& roomId, const std::string& userI
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = rooms_.find(roomId);
     if (it == rooms_.end()) return false;
-    // Public rooms — anyone is considered a member
     if (it->second.type == RoomType::PUBLIC) return true;
     auto& members = it->second.memberIds;
     return std::find(members.begin(), members.end(), userId) != members.end();
@@ -144,7 +106,7 @@ bool InMemoryStore::addMessageToRoom(const std::string& roomId, const ChatMessag
     if (it == rooms_.end()) return false;
     auto& history = it->second.history;
     history.push_back(msg);
-    if (history.size() > 100)           //keep last 100 messages
+    if (history.size() > 100)
         history.erase(history.begin());
     return true;
 }
@@ -167,7 +129,7 @@ std::vector<ChatRoom> InMemoryStore::getPublicRooms()
     return result;
 }
 
-//marketplace 
+//marketplace
 bool InMemoryStore::addListing(const Listing& listing)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -216,7 +178,7 @@ bool InMemoryStore::deleteListing(const std::string& listingId, const std::strin
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = listings_.find(listingId);
     if (it == listings_.end()) return false;
-    if (it->second.sellerUserId != requestingUserId) return false; //not owner
+    if (it->second.sellerUserId != requestingUserId) return false;
     it->second.status = ListingStatus::DELETED;
     return true;
 }
@@ -265,7 +227,6 @@ bool InMemoryStore::markAnswerFaq(const std::string& questionId, const std::stri
     {
         if (a.answerId == answerId)
         {
-            //this should be changed to allow admins only to put it up in the FAQ
             if (a.authorUserId != requestingUserId) return false;
             a.isFaq = true;
             return true;
@@ -338,13 +299,13 @@ bool InMemoryStore::voteQuestion(const std::string& questionId, const std::strin
     auto& q = it->second;
 
     if (upvote) {
-        if (q.upvoters.count(userId))   return false; //already upvoted
+        if (q.upvoters.count(userId))   return false;
         q.downvoters.erase(userId);
         if (q.downvotes > 0) q.downvotes--;
         q.upvoters.insert(userId);
         q.upvotes++;
     } else {
-        if (q.downvoters.count(userId)) return false; //already downvoted
+        if (q.downvoters.count(userId)) return false;
         q.upvoters.erase(userId);
         if (q.upvotes > 0) q.upvotes--;
         q.downvoters.insert(userId);
