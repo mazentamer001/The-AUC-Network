@@ -4,11 +4,11 @@
 
 class Session;
 class Server;
-class InMemoryStore;
+class Database;
 
 class ChatService {
 public:
-    ChatService(InMemoryStore& store);
+    ChatService(Database& store);
     void setServer(Server& server) { server_ = &server; }
 
     void handlePublic (const Message& msg, std::shared_ptr<Session> sender);
@@ -25,5 +25,5 @@ private:
     void sendOk   (const std::string& text,   std::shared_ptr<Session> sender);
 
     Server*server_ = nullptr;
-    InMemoryStore& store_;
+    Database& store_;
 };

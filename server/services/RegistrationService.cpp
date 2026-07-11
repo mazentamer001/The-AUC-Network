@@ -1,5 +1,5 @@
 #include "RegistrationService.h"
-#include "InMemoryStore.h"
+#include "Database.h"
 #include "UserRecord.h"
 #include "Session.h"
 #include <chrono>
@@ -10,7 +10,7 @@
 #include <regex>
 #include <sstream>
 
-RegistrationService::RegistrationService(InMemoryStore& store) : store_(store) {}
+RegistrationService::RegistrationService(Database& store) : store_(store) {}
 
 void RegistrationService::handleRegister(const Message& msg, std::shared_ptr<Session> sender)
 {

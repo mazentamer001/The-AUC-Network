@@ -5,6 +5,7 @@
 #include <QSet>
 #include "Message.h"
 
+class UsersSidebar;
 class QListWidget;
 class QTextEdit;
 class QLineEdit;
@@ -14,9 +15,13 @@ class ChatPanel : public QWidget {
     Q_OBJECT
 public:
     explicit ChatPanel(QWidget* parent = nullptr);
-    void openDirectRoom(const QString& roomId);
-    void receiveMessage(const Message& msg);
-    void setCurrentUser(const QString& displayName, const QString& userId);
+
+    void receiveMessage  (const Message& msg);
+    void setCurrentUser  (const QString& displayName, const QString& userId);
+    void openDirectRoom  (const QString& roomId);
+    void addOnlineUser   (const QString& userId, const QString& displayName,
+                          const QString& username, const QString& bio);
+    void removeOnlineUser(const QString& userId);
 
 signals:
     void messageSent(const Message& msg);
@@ -29,15 +34,16 @@ private slots:
 
 private:
     void switchToRoom(const QString& room);
-    void appendChat(const QString& room, const QString& sender, const QString& text);
+    void appendChat  (const QString& room, const QString& sender, const QString& text);
 
     QListWidget*              roomList_;
     QStackedWidget*           chatStack_;
     QMap<QString, QTextEdit*> roomViews_;
-    QSet<QString>             joinedRooms_;   // rooms we've confirmed joined
+    QSet<QString>             joinedRooms_;
     QLineEdit*                messageInput_;
     QLineEdit*                roomIdInput_;
     QLabel*                   currentRoomLabel_;
+    UsersSidebar*             usersSidebar_;
 
     QString currentRoom_;
     QString displayName_;

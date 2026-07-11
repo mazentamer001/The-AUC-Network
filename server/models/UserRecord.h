@@ -15,7 +15,7 @@ inline Role roleFromString(const std::string& s)
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  UserRecord
-//  Stored in InMemoryStore. Never leaves the server — the client only ever
+//  Stored in Databse. Never leaves the server — the client only ever
 //  sees what services explicitly put into a response Message.
 // ─────────────────────────────────────────────────────────────────────────────
 struct UserRecord

@@ -3,7 +3,7 @@
 #include "Message.h"
 
 class Session;
-class InMemoryStore;
+class Database;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  RegistrationService
@@ -22,7 +22,7 @@ class InMemoryStore;
 class RegistrationService
 {
 public:
-    explicit RegistrationService(InMemoryStore& store);
+    explicit RegistrationService(Database& store);
 
     void handleRegister(const Message& msg, std::shared_ptr<Session> sender);
 
@@ -39,5 +39,5 @@ private:
     void sendSuccess(const std::string& username, std::shared_ptr<Session> sender);
     void sendError(const std::string& reason, std::shared_ptr<Session> sender);
 
-    InMemoryStore& store_;
+    Database& store_;
 };

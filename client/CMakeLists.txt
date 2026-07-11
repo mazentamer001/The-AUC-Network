@@ -37,6 +37,7 @@ add_executable(TestGUI
     ui/panels/MarketplacePanel.cpp
     ui/panels/FilesPanel.cpp
     ui/panels/ForumPanel.cpp
+    ui/panels/UsersSidebar.cpp 
     ui/panels/ProfilePanel.cpp
 )
 set_target_properties(TestGUI PROPERTIES AUTOMOC ON)

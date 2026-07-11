@@ -12,60 +12,48 @@
 #include <QFrame>
 #include <QScrollBar>
 
-// Cohesive Label Color Palette
-static const char* BG_MAIN       = "#D4C5B6"; // Warm Sand / Parchment
-static const char* BG_PANEL      = "#C9BBAA"; // Slightly deeper sand for sidebar/logs
-static const char* TEXT_MAIN     = "#0F0F0F"; // Ink Black
-static const char* ACCENT_ORANGE = "#E65C40"; // Stamp Red-Orange
+static const char* ACCENT   = "#6366f1";
+static const char* ACCENT2  = "#818cf8";
+static const char* TEXT_SEC = "#94a3b8";
+static const char* BG_PANEL = "#0f172a";
 
 MainShell::MainShell(QWidget* parent) : QWidget(parent)
 {
-    // Force the background color for the main shell container
-    setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(QString("MainShell { background-color: %1; }").arg(BG_MAIN));
-
     auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(0, 0, 0, 0);
+    root->setContentsMargins(0,0,0,0);
     root->setSpacing(0);
 
     auto* row = new QHBoxLayout;
-    row->setContentsMargins(0, 0, 0, 0);
+    row->setContentsMargins(0,0,0,0);
     row->setSpacing(0);
 
-    // ── TEXT SIDEBAR (Structured Left Column) ─────────────────────────────
+    // ── icon sidebar ──────────────────────────────────────────────────────
     auto* iconBar = new QWidget;
-    // Widened from 68 to 160 to comfortably fit the bold text labels
-    iconBar->setFixedWidth(160);
-    iconBar->setStyleSheet(QString("background: %1; border-right: 1px solid %2;").arg(BG_PANEL, TEXT_MAIN));
-    
+    iconBar->setFixedWidth(68);
+    iconBar->setStyleSheet(QString("background:%1;border-right:1px solid #1e293b;").arg(BG_PANEL));
     auto* iconLayout = new QVBoxLayout(iconBar);
-    iconLayout->setContentsMargins(0, 16, 0, 16); // Removed side margins so buttons stretch full width
-    iconLayout->setSpacing(0);
+    iconLayout->setContentsMargins(8,12,8,12);
+    iconLayout->setSpacing(6);
     iconLayout->setAlignment(Qt::AlignTop);
 
-    // Replaced the hexagon with a text-based system label
-    auto* logoLabel = new QLabel("SYS // NET");
+    auto* logoLabel = new QLabel("⬡");
     logoLabel->setAlignment(Qt::AlignCenter);
     logoLabel->setFixedHeight(44);
-    logoLabel->setStyleSheet(QString(
-        "color: %1; font-size: 14px; font-weight: 900; letter-spacing: 3px; border: none;"
-    ).arg(TEXT_MAIN));
+    logoLabel->setStyleSheet(QString("color:%1;font-size:28px;").arg(ACCENT2));
     iconLayout->addWidget(logoLabel);
 
     auto* divider = new QFrame;
     divider->setFrameShape(QFrame::HLine);
-    divider->setStyleSheet(QString("background-color: %1; margin: 8px 12px; border: none;").arg(TEXT_MAIN));
+    divider->setStyleSheet("background:#1e293b;margin:4px 0;");
     divider->setFixedHeight(1);
     iconLayout->addWidget(divider);
-    iconLayout->addSpacing(8);
+    iconLayout->addSpacing(4);
 
-    // Swapped emojis for text labels
-    btnChat_    = makeNavBtn("CHAT", "Open Chat");
-    btnMarket_  = makeNavBtn("MARKET", "Open Marketplace");
-    btnFiles_   = makeNavBtn("FILES", "Open Files");
-    btnForum_   = makeNavBtn("FORUM", "Open Forum");
-    btnProfile_ = makeNavBtn("PROFILE", "Open Profile");
-    
+    btnChat_    = makeNavBtn("💬","Chat");
+    btnMarket_  = makeNavBtn("🛒","Marketplace");
+    btnFiles_   = makeNavBtn("📁","Files");
+    btnForum_   = makeNavBtn("❓","Forum");
+    btnProfile_ = makeNavBtn("👤","Profile");
     btnChat_->setChecked(true);
 
     iconLayout->addWidget(btnChat_);
@@ -75,64 +63,68 @@ MainShell::MainShell(QWidget* parent) : QWidget(parent)
     iconLayout->addWidget(btnProfile_);
     iconLayout->addStretch();
 
-    // Text-based Logout Button
     auto* btnLogout = new QToolButton;
-    btnLogout->setText("LOGOUT");
-    btnLogout->setToolTip("Disconnect");
-    btnLogout->setFixedHeight(44);
-    btnLogout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    btnLogout->setText("⏻");
+    btnLogout->setToolTip("Logout");
+    btnLogout->setFixedSize(52,52);
     btnLogout->setStyleSheet(QString(
-        "QToolButton {"
-        "  background: transparent; color: %1; border: none;"
-        "  border-radius: 0px; font-size: 12px; font-weight: bold; letter-spacing: 2px;"
-        "  text-align: left; padding-left: 16px;"
-        "}"
-        "QToolButton:hover { background: %1; color: %2; }"
-    ).arg(TEXT_MAIN, BG_MAIN));
+        "QToolButton{background:transparent;color:%1;border:none;"
+        "border-radius:12px;font-size:20px;}"
+        "QToolButton:hover{background:#7f1d1d;color:white;}").arg(TEXT_SEC));
     iconLayout->addWidget(btnLogout);
 
-    // ── CONTENT STACK ─────────────────────────────────────────────────────
+    // ── content stack ─────────────────────────────────────────────────────
     contentStack_ = new QStackedWidget;
-    contentStack_->setStyleSheet(QString("background-color: %1; border: none;").arg(BG_MAIN));
 
-    chatPanel_    = new ChatPanel;
-    marketPanel_  = new MarketplacePanel;
-    filesPanel_   = new FilesPanel;
+    chatPanel_   = new ChatPanel;
+    marketPanel_ = new MarketplacePanel;
+    filesPanel_  = new FilesPanel;
     forumPanel_   = new ForumPanel;
     profilePanel_ = new ProfilePanel;
 
-    contentStack_->addWidget(chatPanel_);                                        
-    contentStack_->addWidget(marketPanel_);                                      
-    contentStack_->addWidget(filesPanel_);                                       
-    contentStack_->addWidget(forumPanel_);                                       
-    contentStack_->addWidget(profilePanel_);                                    
+    auto makePlaceholder = [](const QString& icon, const QString& label) -> QWidget* {
+        auto* w = new QWidget;
+        w->setStyleSheet("background:#0a0f1e;");
+        auto* l = new QVBoxLayout(w);
+        l->setAlignment(Qt::AlignCenter);
+        auto* ic = new QLabel(icon);
+        ic->setAlignment(Qt::AlignCenter);
+        ic->setStyleSheet("font-size:56px;background:transparent;");
+        auto* lb = new QLabel(label);
+        lb->setAlignment(Qt::AlignCenter);
+        lb->setStyleSheet("color:#94a3b8;font-size:18px;background:transparent;");
+        l->addWidget(ic); l->addSpacing(12); l->addWidget(lb);
+        return w;
+    };
+
+    contentStack_->addWidget(chatPanel_);                                        // 0
+    contentStack_->addWidget(marketPanel_);                                      // 1
+    contentStack_->addWidget(filesPanel_);                                       // 2
+    contentStack_->addWidget(forumPanel_);                                       // 3
+    contentStack_->addWidget(makePlaceholder("👤","Profile — coming soon"));    // 4
 
     row->addWidget(iconBar);
     row->addWidget(contentStack_, 1);
 
-    // ── LOG STRIP (Bottom Status Bar) ─────────────────────────────────────
+    // ── log strip ─────────────────────────────────────────────────────────
     logView_ = new QTextEdit;
     logView_->setReadOnly(true);
     logView_->setMaximumHeight(90);
     logView_->setStyleSheet(QString(
-        "QTextEdit {"
-        "  background: %1; color: %2; border: none;"
-        "  border-top: 1px solid %2; font-family: monospace;"
-        "  font-size: 11px; padding: 6px;"
-        "}"
-    ).arg(BG_PANEL, TEXT_MAIN));
+        "QTextEdit{background:%1;color:#64748b;border:none;"
+        "border-top:1px solid #1e293b;font-family:monospace;"
+        "font-size:11px;padding:6px;}").arg(BG_PANEL));
 
     root->addLayout(row, 1);
     root->addWidget(logView_);
 
-    // ── NAVIGATION LOGIC ──────────────────────────────────────────────────
+    // ── nav ───────────────────────────────────────────────────────────────
     auto switchTo = [this](int idx, QToolButton* active){
         contentStack_->setCurrentIndex(idx);
         for (auto* b : {btnChat_, btnMarket_, btnFiles_, btnForum_, btnProfile_})
             b->setChecked(false);
         active->setChecked(true);
     };
-    
     connect(btnChat_,    &QToolButton::clicked, [=]{ switchTo(0, btnChat_); });
     connect(btnMarket_,  &QToolButton::clicked, [=]{ switchTo(1, btnMarket_); });
     connect(btnFiles_,   &QToolButton::clicked, [=]{ switchTo(2, btnFiles_); });
@@ -140,14 +132,14 @@ MainShell::MainShell(QWidget* parent) : QWidget(parent)
     connect(btnProfile_, &QToolButton::clicked, [=]{ switchTo(4, btnProfile_); });
     connect(btnLogout,   &QToolButton::clicked, this, &MainShell::logoutClicked);
 
-    // ── SIGNALS UP TO MAINWINDOW ──────────────────────────────────────────
-    connect(chatPanel_,    &ChatPanel::messageSent,        this, &MainShell::sendMessage);
-    connect(chatPanel_,    &ChatPanel::roomCreated,        this, &MainShell::sendMessage);
-    connect(chatPanel_,    &ChatPanel::roomJoined,         this, &MainShell::sendMessage);
-    connect(marketPanel_,  &MarketplacePanel::sendMessage, this, &MainShell::sendMessage);
-    connect(filesPanel_,   &FilesPanel::sendMessage,       this, &MainShell::sendMessage);
+    // ── signals up to MainWindow ──────────────────────────────────────────
+    connect(chatPanel_,   &ChatPanel::messageSent,        this, &MainShell::sendMessage);
+    connect(chatPanel_,   &ChatPanel::roomCreated,        this, &MainShell::sendMessage);
+    connect(chatPanel_,   &ChatPanel::roomJoined,         this, &MainShell::sendMessage);
+    connect(marketPanel_, &MarketplacePanel::sendMessage, this, &MainShell::sendMessage);
+    connect(filesPanel_,  &FilesPanel::sendMessage,       this, &MainShell::sendMessage);
     connect(forumPanel_,   &ForumPanel::sendMessage,       this, &MainShell::sendMessage);
-    connect(profilePanel_, &ProfilePanel::sendMessage,     this, &MainShell::sendMessage);
+    connect(profilePanel_, &ProfilePanel::sendMessage,      this, &MainShell::sendMessage);
 
     connect(marketPanel_, &MarketplacePanel::openRoom, this, [this](const QString& roomId){
         contentStack_->setCurrentIndex(0);
@@ -165,12 +157,13 @@ void MainShell::setCurrentUser(const QString& displayName,
 {
     token_ = token;
     chatPanel_->setCurrentUser(displayName, userId);
+    chatPanel_->addOnlineUser(userId, displayName, username, ""); // add self
     marketPanel_->setCurrentUser(displayName, userId);
     marketPanel_->setToken(token);
     filesPanel_->setCurrentUser(displayName, userId, token);
     forumPanel_->setCurrentUser(displayName, userId, token);
-    profilePanel_->setCurrentUser(displayName, userId, username, "", token);
-    log("SYSTEM // AUTHENTICATED: " + displayName);
+    profilePanel_->setCurrentUser(displayName, userId, username,"", token);
+    log("✅ Logged in as " + displayName);
 }
 
 void MainShell::routeMessage(const Message& msg)
@@ -179,12 +172,21 @@ void MainShell::routeMessage(const Message& msg)
     {
     case MessageType::CHAT_PUBLIC:
     case MessageType::CHAT_PRIVATE:
-    case MessageType::CHAT_CREATE:
     case MessageType::JOIN:
     case MessageType::LEAVE:
-    case MessageType::PRESENCE:
         chatPanel_->receiveMessage(msg);
         break;
+
+    case MessageType::PRESENCE: {
+        // user came online — add to sidebar
+        QString userId      = QString::fromStdString(msg.sender.userId);
+        QString displayName = QString::fromStdString(msg.displayName);
+        QString username    = QString::fromStdString(msg.sender.username);
+        QString bio         = QString::fromStdString(msg.bio);
+        if (!userId.isEmpty())
+            chatPanel_->addOnlineUser(userId, displayName, username, bio);
+        break;
+    }
 
     case MessageType::MARKET_POST:
     case MessageType::MARKET_INQUIRY:
@@ -215,38 +217,24 @@ void MainShell::routeMessage(const Message& msg)
         break;
 
     default:
-        log("RECV ← " + QString::fromStdString(Message::typeToString(msg.type))
+        log("← " + QString::fromStdString(Message::typeToString(msg.type))
             + " | " + QString::fromStdString(msg.text));
         break;
     }
 }
 
-QToolButton* MainShell::makeNavBtn(const QString& label, const QString& tip)
+QToolButton* MainShell::makeNavBtn(const QString& icon, const QString& tip)
 {
     auto* btn = new QToolButton;
-    btn->setText(label);
+    btn->setText(icon);
     btn->setToolTip(tip);
-    
-    // Adjusted from a fixed square to a horizontal expanding bar
-    btn->setFixedHeight(44);
-    btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    btn->setFixedSize(52,52);
     btn->setCheckable(true);
-    
-    // Realigned text to the left with padding to mimic a directory list
     btn->setStyleSheet(QString(
-        "QToolButton {"
-        "  background: transparent; color: %1; border: none; border-right: 0px;"
-        "  border-radius: 0px; font-size: 12px; font-weight: bold; letter-spacing: 2px;"
-        "  text-align: left; padding-left: 16px;"
-        "}"
-        "QToolButton:hover {"
-        "  background: %1; color: %3;" 
-        "}"
-        "QToolButton:checked {"
-        "  background: %2; color: %3;"
-        "}"
-    ).arg(TEXT_MAIN, ACCENT_ORANGE, BG_MAIN));
-    
+        "QToolButton{background:transparent;color:%1;border:none;"
+        "border-radius:12px;font-size:22px;}"
+        "QToolButton:hover{background:#1e293b;color:white;}"
+        "QToolButton:checked{background:%2;color:white;}").arg(TEXT_SEC, ACCENT));
     return btn;
 }
 

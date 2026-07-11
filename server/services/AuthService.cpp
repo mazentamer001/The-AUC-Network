@@ -1,5 +1,5 @@
 #include "AuthService.h"
-#include "store/InMemoryStore.h"
+#include "database/Database.h"
 #include "models/UserRecord.h"
 #include "AuthToken.h"
 #include "Server.h"
@@ -12,8 +12,8 @@
 #include <sstream>
 
 
-//creates AuthService and gives it access to the in memory database
-AuthService::AuthService(InMemoryStore& store) : store_(store){}
+//creates AuthService and gives it access to the in database
+AuthService::AuthService(Database& store) : store_(store){}
 
 //logs a user into the system
 void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sender)
@@ -62,6 +62,16 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
 
     std::cout << "User logged in: " << userOpt->username << std::endl;
     sendSuccess(token.sessionId, token.role, token.displayName, sender);  //tell the client login succeeded
+
+    //broadcast presence
+    Message presence;
+    presence.type              = MessageType::PRESENCE;
+    presence.sender.userId     = userOpt->userId;
+    presence.sender.username   = userOpt->username;
+    presence.displayName       = userOpt->displayName;
+    presence.bio               = userOpt->bio;
+    if (server_) server_->broadcast(presence, sender);
+
 }
 
 //logs the user out

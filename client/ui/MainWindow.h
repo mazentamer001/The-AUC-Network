@@ -23,13 +23,13 @@ private slots:
     void sendToServer(const Message& msg);
 
 private:
-    Client*        client_;
+    Client* client_;
     QStackedWidget* stack_;
 
-    HomePage*     homePage_;
+    HomePage* homePage_;
     RegisterPage* registerPage_;
-    LoginPage*    loginPage_;
-    MainShell*    mainShell_;
+    LoginPage* loginPage_;
+    MainShell* mainShell_;
 
     QString token_;
     QString userId_;

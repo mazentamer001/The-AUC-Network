@@ -3,13 +3,13 @@
 #include "Message.h"
 
 class Session;
-class InMemoryStore;
+class Database;
 class Server;
 
 
 class FileStorageService {
 public:
-    explicit FileStorageService(InMemoryStore& store, const std::string& uploadDir = "uploads/");
+    explicit FileStorageService(Database& store, const std::string& uploadDir = "uploads/");
     void setServer(Server& server) { server_ = &server; }
     void handleUpload (const Message& msg, std::shared_ptr<Session> sender); //register file URL
     void handleReport (const Message& msg, std::shared_ptr<Session> sender); //flag a file
@@ -22,7 +22,7 @@ private:
     void sendError(const std::string& reason, std::shared_ptr<Session> sender);
     void sendOk (const std::string& text, std::shared_ptr<Session> sender);
 
-    InMemoryStore& store_;
+    Database& store_;
     std::string uploadDir_;
     Server* server_ = nullptr;
 };

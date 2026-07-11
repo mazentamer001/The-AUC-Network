@@ -3,7 +3,7 @@
 
 #include "Server.h"
 #include "Dispatcher.h"
-#include "store/InMemoryStore.h"
+#include "database/Database.h"
 #include "services/AuthService.h"
 #include "services/RegistrationService.h"
 #include "services/ProfileService.h"
@@ -18,27 +18,29 @@ int main()
     {
         boost::asio::io_context io;
 
-        InMemoryStore store;
+        Database db("data/network.db");
 
-        AuthService         auth(store);
-        RegistrationService registration(store);
-        ProfileService      profile(store);
-        ChatService         chat(store);
-        MarketplaceService  marketplace(store);
-        ForumService        forum(store);
-        FileStorageService  fileStorage(store);
+        // ── services ──────────────────────────────────────────────────────
+        AuthService         auth(db);
+        RegistrationService registration(db);
+        ProfileService      profile(db);
+        ChatService         chat(db);
+        MarketplaceService  marketplace(db);
+        ForumService        forum(db);
+        FileStorageService  fileStorage(db);
 
+        // ── dispatcher ────────────────────────────────────────────────────
         Dispatcher dispatcher(auth, registration, profile,
                               chat, marketplace, forum, fileStorage);
 
+        // ── server ────────────────────────────────────────────────────────
         Server server(io, 12345, dispatcher);
 
+        // ── back-fill server references ───────────────────────────────────
         auth.setServer(server);
         chat.setServer(server);
         marketplace.setServer(server);
         dispatcher.setServer(server);
-        fileStorage.setServer(server);
-        forum.setServer(server);
 
         std::cout << "Server ready on port 12345\n";
         io.run();

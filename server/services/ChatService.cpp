@@ -1,5 +1,5 @@
 #include "services/ChatService.h"
-#include "store/InMemoryStore.h"
+#include "database/Database.h"
 #include "models/ChatRoom.h"
 #include "Server.h"
 #include "Session.h"
@@ -10,7 +10,7 @@
 #include <sstream>
 
 //give access to database
-ChatService::ChatService(InMemoryStore& store) : store_(store){}
+ChatService::ChatService(Database& store) : store_(store){}
 
 //creates a new room
 void ChatService::handleCreate(const Message& msg, std::shared_ptr<Session> sender)
