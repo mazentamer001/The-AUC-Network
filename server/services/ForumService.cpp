@@ -1,5 +1,5 @@
 #include "services/ForumService.h"
-#include "database/Database.h"
+#include "store/InMemoryStore.h"
 #include "models/ForumPost.h"
 #include "Session.h"
 #include "Server.h"
@@ -9,7 +9,7 @@
 #include <random>
 #include <sstream>
 
-ForumService::ForumService(Database& store) : store_(store) {}
+ForumService::ForumService(InMemoryStore& store) : store_(store) {}
 
 //post a question
 void ForumService::handleQuestion(const Message& msg, std::shared_ptr<Session> sender)

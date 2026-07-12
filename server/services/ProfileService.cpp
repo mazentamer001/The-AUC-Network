@@ -1,12 +1,12 @@
 #include "services/ProfileService.h"
-#include "database/Database.h"
+#include "store/InMemoryStore.h"
 #include "Session.h"
 #include <functional>
 #include <iostream>
 #include <sstream>
 
 //constructor
-ProfileService::ProfileService(Database& store) : store_(store) {}
+ProfileService::ProfileService(InMemoryStore& store) : store_(store) {}
 
 //get own profile
 void ProfileService::handleGet(const Message& msg, std::shared_ptr<Session> sender)

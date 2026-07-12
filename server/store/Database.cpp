@@ -1,4 +1,4 @@
-#include "database/Database.h"
+#include "store/Database.h"
 #include <filesystem>
 #include <iostream>
 #include <sstream>
@@ -135,7 +135,7 @@ void Database::createTables()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Row helpers
+//  Row helpers (already lock-free — take a live Statement& and just decode it)
 // ─────────────────────────────────────────────────────────────────────────────
 UserRecord Database::rowToUser(SQLite::Statement& q)
 {
@@ -202,6 +202,11 @@ Listing Database::rowToListing(SQLite::Statement& q)
 bool Database::addUser(const UserRecord& u)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return addUser_nolock(u);
+}
+
+bool Database::addUser_nolock(const UserRecord& u)
+{
     try {
         SQLite::Statement q(*db_,
             "INSERT INTO users (userId,username,displayName,email,passwordHash,"
@@ -228,6 +233,11 @@ bool Database::addUser(const UserRecord& u)
 std::optional<UserRecord> Database::findUserById(const std::string& userId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return findUserById_nolock(userId);
+}
+
+std::optional<UserRecord> Database::findUserById_nolock(const std::string& userId)
+{
     SQLite::Statement q(*db_, "SELECT * FROM users WHERE userId=?");
     q.bind(1, userId);
     if (q.executeStep()) return rowToUser(q);
@@ -237,6 +247,11 @@ std::optional<UserRecord> Database::findUserById(const std::string& userId)
 std::optional<UserRecord> Database::findUserByUsername(const std::string& username)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return findUserByUsername_nolock(username);
+}
+
+std::optional<UserRecord> Database::findUserByUsername_nolock(const std::string& username)
+{
     SQLite::Statement q(*db_, "SELECT * FROM users WHERE username=?");
     q.bind(1, username);
     if (q.executeStep()) return rowToUser(q);
@@ -246,6 +261,11 @@ std::optional<UserRecord> Database::findUserByUsername(const std::string& userna
 std::optional<UserRecord> Database::findUserByEmail(const std::string& email)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return findUserByEmail_nolock(email);
+}
+
+std::optional<UserRecord> Database::findUserByEmail_nolock(const std::string& email)
+{
     SQLite::Statement q(*db_, "SELECT * FROM users WHERE email=?");
     q.bind(1, email);
     if (q.executeStep()) return rowToUser(q);
@@ -255,6 +275,11 @@ std::optional<UserRecord> Database::findUserByEmail(const std::string& email)
 std::optional<UserRecord> Database::findUserByUniversityId(const std::string& uniId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return findUserByUniversityId_nolock(uniId);
+}
+
+std::optional<UserRecord> Database::findUserByUniversityId_nolock(const std::string& uniId)
+{
     SQLite::Statement q(*db_, "SELECT * FROM users WHERE universityId=?");
     q.bind(1, uniId);
     if (q.executeStep()) return rowToUser(q);
@@ -264,6 +289,11 @@ std::optional<UserRecord> Database::findUserByUniversityId(const std::string& un
 bool Database::updateUser(const std::string& userId, const UserRecord& patch)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return updateUser_nolock(userId, patch);
+}
+
+bool Database::updateUser_nolock(const std::string& userId, const UserRecord& patch)
+{
     try {
         // build dynamic UPDATE only for non-empty fields
         std::string sql = "UPDATE users SET ";
@@ -298,6 +328,11 @@ bool Database::updateUser(const std::string& userId, const UserRecord& patch)
 std::vector<UserRecord> Database::getAllUsers()
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return getAllUsers_nolock();
+}
+
+std::vector<UserRecord> Database::getAllUsers_nolock()
+{
     std::vector<UserRecord> result;
     SQLite::Statement q(*db_, "SELECT * FROM users");
     while (q.executeStep()) result.push_back(rowToUser(q));
@@ -310,6 +345,11 @@ std::vector<UserRecord> Database::getAllUsers()
 void Database::addSession(const AuthToken& t)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    addSession_nolock(t);
+}
+
+void Database::addSession_nolock(const AuthToken& t)
+{
     SQLite::Statement q(*db_,
         "INSERT OR REPLACE INTO sessions "
         "(sessionId,userId,username,displayName,role,expiresAt) "
@@ -326,6 +366,11 @@ void Database::addSession(const AuthToken& t)
 std::optional<AuthToken> Database::findSession(const std::string& sessionId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return findSession_nolock(sessionId);
+}
+
+std::optional<AuthToken> Database::findSession_nolock(const std::string& sessionId)
+{
     SQLite::Statement q(*db_, "SELECT * FROM sessions WHERE sessionId=?");
     q.bind(1, sessionId);
     if (!q.executeStep()) return std::nullopt;
@@ -333,7 +378,7 @@ std::optional<AuthToken> Database::findSession(const std::string& sessionId)
     auto now = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     if (t.expiresAt < now) {
-        db_->exec("DELETE FROM sessions WHERE sessionId='" + sessionId + "'");
+        removeSession_nolock(sessionId);
         return std::nullopt;
     }
     return t;
@@ -342,6 +387,11 @@ std::optional<AuthToken> Database::findSession(const std::string& sessionId)
 void Database::removeSession(const std::string& sessionId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    removeSession_nolock(sessionId);
+}
+
+void Database::removeSession_nolock(const std::string& sessionId)
+{
     SQLite::Statement q(*db_, "DELETE FROM sessions WHERE sessionId=?");
     q.bind(1, sessionId);
     q.exec();
@@ -353,6 +403,11 @@ void Database::removeSession(const std::string& sessionId)
 bool Database::createRoom(const ChatRoom& room)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return createRoom_nolock(room);
+}
+
+bool Database::createRoom_nolock(const ChatRoom& room)
+{
     try {
         std::string typeStr =
             room.type == RoomType::GROUP  ? "GROUP"  :
@@ -384,6 +439,11 @@ bool Database::createRoom(const ChatRoom& room)
 std::optional<ChatRoom> Database::findRoom(const std::string& roomId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return findRoom_nolock(roomId);
+}
+
+std::optional<ChatRoom> Database::findRoom_nolock(const std::string& roomId)
+{
     SQLite::Statement q(*db_, "SELECT * FROM chat_rooms WHERE roomId=?");
     q.bind(1, roomId);
     if (!q.executeStep()) return std::nullopt;
@@ -409,6 +469,11 @@ std::optional<ChatRoom> Database::findRoom(const std::string& roomId)
 bool Database::addMemberToRoom(const std::string& roomId, const std::string& userId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return addMemberToRoom_nolock(roomId, userId);
+}
+
+bool Database::addMemberToRoom_nolock(const std::string& roomId, const std::string& userId)
+{
     SQLite::Statement q(*db_,
         "INSERT OR IGNORE INTO chat_members (roomId,userId) VALUES (?,?)");
     q.bind(1, roomId); q.bind(2, userId);
@@ -419,6 +484,11 @@ bool Database::addMemberToRoom(const std::string& roomId, const std::string& use
 bool Database::isMember(const std::string& roomId, const std::string& userId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return isMember_nolock(roomId, userId);
+}
+
+bool Database::isMember_nolock(const std::string& roomId, const std::string& userId)
+{
     // check if PUBLIC first
     SQLite::Statement t(*db_, "SELECT type FROM chat_rooms WHERE roomId=?");
     t.bind(1, roomId);
@@ -434,6 +504,11 @@ bool Database::isMember(const std::string& roomId, const std::string& userId)
 bool Database::addMessageToRoom(const std::string& roomId, const ChatMessage& msg)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return addMessageToRoom_nolock(roomId, msg);
+}
+
+bool Database::addMessageToRoom_nolock(const std::string& roomId, const ChatMessage& msg)
+{
     try {
         SQLite::Statement q(*db_,
             "INSERT INTO chat_messages "
@@ -457,6 +532,11 @@ bool Database::addMessageToRoom(const std::string& roomId, const ChatMessage& ms
 std::vector<ChatMessage> Database::getRoomHistory(const std::string& roomId, int limit)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return getRoomHistory_nolock(roomId, limit);
+}
+
+std::vector<ChatMessage> Database::getRoomHistory_nolock(const std::string& roomId, int limit)
+{
     std::vector<ChatMessage> result;
     SQLite::Statement q(*db_,
         "SELECT * FROM chat_messages WHERE roomId=? "
@@ -470,11 +550,23 @@ std::vector<ChatMessage> Database::getRoomHistory(const std::string& roomId, int
 std::vector<ChatRoom> Database::getPublicRooms()
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return getPublicRooms_nolock();
+}
+
+std::vector<ChatRoom> Database::getPublicRooms_nolock()
+{
     std::vector<ChatRoom> result;
-    SQLite::Statement q(*db_, "SELECT roomId FROM chat_rooms WHERE type='PUBLIC'");
-    while (q.executeStep()) {
-        auto r = findRoom(q.getColumn(0).getText());
-        if (r) result.push_back(*r);
+    SQLite::Statement q(*db_,
+        "SELECT roomId FROM chat_rooms WHERE type='PUBLIC'");
+    std::vector<std::string> roomIds;
+    while (q.executeStep())
+        roomIds.push_back(q.getColumn(0).getText());
+
+    // reuse findRoom_nolock so member lists come back populated,
+    // without re-locking the mutex (we already hold it)
+    for (auto& id : roomIds) {
+        auto room = findRoom_nolock(id);
+        if (room) result.push_back(*room);
     }
     return result;
 }
@@ -485,6 +577,11 @@ std::vector<ChatRoom> Database::getPublicRooms()
 bool Database::addListing(const Listing& l)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return addListing_nolock(l);
+}
+
+bool Database::addListing_nolock(const Listing& l)
+{
     try {
         SQLite::Statement q(*db_,
             "INSERT INTO listings "
@@ -510,6 +607,11 @@ bool Database::addListing(const Listing& l)
 std::optional<Listing> Database::findListing(const std::string& listingId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return findListing_nolock(listingId);
+}
+
+std::optional<Listing> Database::findListing_nolock(const std::string& listingId)
+{
     SQLite::Statement q(*db_, "SELECT * FROM listings WHERE listingId=?");
     q.bind(1, listingId);
     if (q.executeStep()) return rowToListing(q);
@@ -519,6 +621,11 @@ std::optional<Listing> Database::findListing(const std::string& listingId)
 std::vector<Listing> Database::searchListings(const std::string& query)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return searchListings_nolock(query);
+}
+
+std::vector<Listing> Database::searchListings_nolock(const std::string& query)
+{
     std::vector<Listing> result;
     SQLite::Statement q(*db_,
         "SELECT * FROM listings WHERE status='ACTIVE' AND "
@@ -532,6 +639,11 @@ std::vector<Listing> Database::searchListings(const std::string& query)
 std::vector<Listing> Database::getListingsByUser(const std::string& userId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return getListingsByUser_nolock(userId);
+}
+
+std::vector<Listing> Database::getListingsByUser_nolock(const std::string& userId)
+{
     std::vector<Listing> result;
     SQLite::Statement q(*db_,
         "SELECT * FROM listings WHERE sellerUserId=? AND status!='DELETED'");
@@ -544,6 +656,12 @@ bool Database::deleteListing(const std::string& listingId,
                               const std::string& requestingUserId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return deleteListing_nolock(listingId, requestingUserId);
+}
+
+bool Database::deleteListing_nolock(const std::string& listingId,
+                                     const std::string& requestingUserId)
+{
     SQLite::Statement q(*db_,
         "UPDATE listings SET status='DELETED' "
         "WHERE listingId=? AND sellerUserId=?");
@@ -555,6 +673,11 @@ bool Database::deleteListing(const std::string& listingId,
 bool Database::markListingSold(const std::string& listingId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return markListingSold_nolock(listingId);
+}
+
+bool Database::markListingSold_nolock(const std::string& listingId)
+{
     SQLite::Statement q(*db_,
         "UPDATE listings SET status='SOLD' WHERE listingId=?");
     q.bind(1, listingId);
@@ -568,6 +691,11 @@ bool Database::markListingSold(const std::string& listingId)
 bool Database::addQuestion(const ForumQuestion& fq)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return addQuestion_nolock(fq);
+}
+
+bool Database::addQuestion_nolock(const ForumQuestion& fq)
+{
     try {
         SQLite::Statement q(*db_,
             "INSERT INTO forum_questions "
@@ -590,10 +718,19 @@ bool Database::addQuestion(const ForumQuestion& fq)
 std::optional<ForumQuestion> Database::findQuestion(const std::string& questionId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    return loadQuestion(questionId);
+    return findQuestion_nolock(questionId);
 }
 
-ForumQuestion Database::loadQuestion(const std::string& questionId)
+std::optional<ForumQuestion> Database::findQuestion_nolock(const std::string& questionId)
+{
+    ForumQuestion fq = loadQuestion_nolock(questionId);
+    if (fq.questionId.empty()) return std::nullopt;
+    return fq;
+}
+
+// loadQuestion_nolock is the pre-existing lock-free loader (renamed for
+// consistency with the rest of the file); it never locks the mutex itself.
+ForumQuestion Database::loadQuestion_nolock(const std::string& questionId)
 {
     SQLite::Statement q(*db_,
         "SELECT * FROM forum_questions WHERE questionId=?");
@@ -632,6 +769,11 @@ ForumQuestion Database::loadQuestion(const std::string& questionId)
 bool Database::addAnswer(const std::string& questionId, const ForumAnswer& fa)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return addAnswer_nolock(questionId, fa);
+}
+
+bool Database::addAnswer_nolock(const std::string& questionId, const ForumAnswer& fa)
+{
     try {
         SQLite::Statement q(*db_,
             "INSERT INTO forum_answers "
@@ -656,7 +798,15 @@ bool Database::markAnswerFaq(const std::string& questionId,
                               const std::string& requestingUserId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return markAnswerFaq_nolock(questionId, answerId, requestingUserId);
+}
+
+bool Database::markAnswerFaq_nolock(const std::string& questionId,
+                                     const std::string& answerId,
+                                     const std::string& requestingUserId)
+{
     // admin check would go here — for now just mark it
+    (void)requestingUserId;
     SQLite::Statement q(*db_,
         "UPDATE forum_answers SET isFaq=1 WHERE answerId=? AND questionId=?");
     q.bind(1, answerId); q.bind(2, questionId);
@@ -668,6 +818,12 @@ bool Database::voteQuestion(const std::string& questionId,
                              const std::string& userId, bool upvote)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return voteQuestion_nolock(questionId, userId, upvote);
+}
+
+bool Database::voteQuestion_nolock(const std::string& questionId,
+                                    const std::string& userId, bool upvote)
+{
     // check duplicate
     SQLite::Statement check(*db_,
         "SELECT voteType FROM forum_votes WHERE targetId=? AND userId=?");
@@ -681,8 +837,10 @@ bool Database::voteQuestion(const std::string& questionId,
     ins.exec();
 
     std::string col = upvote ? "upvotes" : "downvotes";
-    db_->exec("UPDATE forum_questions SET " + col + "=" + col + "+1 "
-              "WHERE questionId='" + questionId + "'");
+    SQLite::Statement upd(*db_,
+        "UPDATE forum_questions SET " + col + "=" + col + "+1 WHERE questionId=?");
+    upd.bind(1, questionId);
+    upd.exec();
     return true;
 }
 
@@ -691,6 +849,14 @@ bool Database::voteAnswer(const std::string& questionId,
                            const std::string& userId, bool upvote)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return voteAnswer_nolock(questionId, answerId, userId, upvote);
+}
+
+bool Database::voteAnswer_nolock(const std::string& questionId,
+                                  const std::string& answerId,
+                                  const std::string& userId, bool upvote)
+{
+    (void)questionId;
     SQLite::Statement check(*db_,
         "SELECT voteType FROM forum_votes WHERE targetId=? AND userId=?");
     check.bind(1, answerId); check.bind(2, userId);
@@ -703,25 +869,37 @@ bool Database::voteAnswer(const std::string& questionId,
     ins.exec();
 
     std::string col = upvote ? "upvotes" : "downvotes";
-    db_->exec("UPDATE forum_answers SET " + col + "=" + col + "+1 "
-              "WHERE answerId='" + answerId + "'");
+    SQLite::Statement upd(*db_,
+        "UPDATE forum_answers SET " + col + "=" + col + "+1 WHERE answerId=?");
+    upd.bind(1, answerId);
+    upd.exec();
     return true;
 }
 
 std::vector<ForumQuestion> Database::getAllQuestions()
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return getAllQuestions_nolock();
+}
+
+std::vector<ForumQuestion> Database::getAllQuestions_nolock()
+{
     std::vector<ForumQuestion> result;
     SQLite::Statement q(*db_,
         "SELECT questionId FROM forum_questions ORDER BY timestamp DESC");
     while (q.executeStep())
-        result.push_back(loadQuestion(q.getColumn(0).getText()));
+        result.push_back(loadQuestion_nolock(q.getColumn(0).getText()));
     return result;
 }
 
 std::vector<ForumAnswer> Database::getFaqAnswers(const std::string& questionId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return getFaqAnswers_nolock(questionId);
+}
+
+std::vector<ForumAnswer> Database::getFaqAnswers_nolock(const std::string& questionId)
+{
     std::vector<ForumAnswer> result;
     SQLite::Statement q(*db_,
         "SELECT * FROM forum_answers WHERE questionId=? AND isFaq=1");
@@ -748,6 +926,11 @@ std::vector<ForumAnswer> Database::getFaqAnswers(const std::string& questionId)
 bool Database::addFile(const FileRecord& f)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return addFile_nolock(f);
+}
+
+bool Database::addFile_nolock(const FileRecord& f)
+{
     try {
         SQLite::Statement q(*db_,
             "INSERT INTO files "
@@ -771,6 +954,11 @@ bool Database::addFile(const FileRecord& f)
 std::optional<FileRecord> Database::findFile(const std::string& fileId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return findFile_nolock(fileId);
+}
+
+std::optional<FileRecord> Database::findFile_nolock(const std::string& fileId)
+{
     SQLite::Statement q(*db_, "SELECT * FROM files WHERE fileId=?");
     q.bind(1, fileId);
     if (!q.executeStep()) return std::nullopt;
@@ -790,6 +978,11 @@ std::optional<FileRecord> Database::findFile(const std::string& fileId)
 std::vector<FileRecord> Database::getAllFiles()
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return getAllFiles_nolock();
+}
+
+std::vector<FileRecord> Database::getAllFiles_nolock()
+{
     std::vector<FileRecord> result;
     SQLite::Statement q(*db_, "SELECT * FROM files WHERE flagged=0 ORDER BY uploadedAt DESC");
     while (q.executeStep()) {
@@ -810,6 +1003,11 @@ std::vector<FileRecord> Database::getAllFiles()
 bool Database::flagFile(const std::string& fileId, const std::string& reason)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    return flagFile_nolock(fileId, reason);
+}
+
+bool Database::flagFile_nolock(const std::string& fileId, const std::string& reason)
+{
     SQLite::Statement q(*db_,
         "UPDATE files SET flagged=1, flagReason=? WHERE fileId=?");
     q.bind(1, reason); q.bind(2, fileId);

@@ -1,5 +1,5 @@
 #include "services/MarketplaceService.h"
-#include "database/Database.h"
+#include "store/InMemoryStore.h"
 #include "models/Listing.h"
 #include "models/ChatRoom.h"
 #include "Server.h"
@@ -10,7 +10,7 @@
 #include <random>
 #include <sstream>
 
-MarketplaceService::MarketplaceService(Database& store) : store_(store) {}
+MarketplaceService::MarketplaceService(InMemoryStore& store) : store_(store) {}
 
 //post a listing
 void MarketplaceService::handlePost(const Message& msg, std::shared_ptr<Session> sender)

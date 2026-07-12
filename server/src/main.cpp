@@ -3,7 +3,7 @@
 
 #include "Server.h"
 #include "Dispatcher.h"
-#include "database/Database.h"
+#include "store/InMemoryStore.h"
 #include "services/AuthService.h"
 #include "services/RegistrationService.h"
 #include "services/ProfileService.h"
@@ -18,7 +18,7 @@ int main()
     {
         boost::asio::io_context io;
 
-        Database db("data/network.db");
+        InMemoryStore db;
 
         // ── services ──────────────────────────────────────────────────────
         AuthService         auth(db);

@@ -3,28 +3,24 @@
 #include "ui/pages/RegisterPage.h"
 #include "ui/pages/LoginPage.h"
 #include "ui/pages/MainShell.h"
-#include <QThread>
 #include <QVBoxLayout>
 #include <QMessageBox>
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
 {
-    setWindowTitle("The Network");
+    setWindowTitle("AUC Network");
     setMinimumSize(1100, 700);
 
-    // ── networking — owned here, passed nowhere ───────────────────────────
-    auto* io = new boost::asio::io_context();
-    client_  = new Client(*io, "127.0.0.1", "12345");
+    // ── networking — owned by this window, shut down in closeEvent ─────────
+    io_     = new boost::asio::io_context();
+    client_ = new Client(*io_, "127.0.0.1", "12345");
 
     client_->setOnMessage([this](const Message& msg){
         QMetaObject::invokeMethod(this, [this, msg]{
             onMessage(msg);
         }, Qt::QueuedConnection);
     });
-
-    auto* ioThread = new QThread(this);
-    connect(ioThread, &QThread::started, [io](){ io->run(); });
-    ioThread->start();
 
     // ── pages ─────────────────────────────────────────────────────────────
     homePage_     = new HomePage;
@@ -60,6 +56,22 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
         msg.token = token_.toStdString();
         sendToServer(msg);
     });
+
+    ioThread_ = new QThread(this);
+    auto* io = io_;
+    connect(ioThread_, &QThread::started, [io](){ io->run(); });
+    ioThread_->start();
+}
+
+// ── clean shutdown of the networking thread ─────────────────────────────────
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+    if (io_) io_->stop();
+    if (ioThread_) {
+        ioThread_->quit();
+        ioThread_->wait();
+    }
+    QWidget::closeEvent(event);
 }
 
 // ── page navigation ───────────────────────────────────────────────────────────
@@ -81,11 +93,12 @@ void MainWindow::onMessage(const Message& msg)
     {
     case MessageType::AUTH_RESPONSE:
         if (!msg.token.empty()) {
-            // successful login
             token_       = QString::fromStdString(msg.token);
             userId_      = QString::fromStdString(msg.sender.userId);
             displayName_ = QString::fromStdString(msg.displayName);
             username_    = QString::fromStdString(msg.sender.username);
+            if (userId_.isEmpty())   userId_   = token_;
+            if (username_.isEmpty()) username_ = displayName_;
             mainShell_->setCurrentUser(displayName_, userId_, username_, token_);
             showShell();
         } else if (!token_.isEmpty()) {
@@ -95,7 +108,6 @@ void MainWindow::onMessage(const Message& msg)
                 showHome();
             }
         } else {
-            // registration success
             QMessageBox::information(this, "Account Created",
                 "Registration successful!\nYou can now sign in.");
             showLogin();
@@ -108,7 +120,6 @@ void MainWindow::onMessage(const Message& msg)
         break;
 
     default:
-        // route everything else to the shell
         mainShell_->routeMessage(msg);
         break;
     }

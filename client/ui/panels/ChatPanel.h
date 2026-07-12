@@ -19,9 +19,9 @@ public:
     void receiveMessage  (const Message& msg);
     void setCurrentUser  (const QString& displayName, const QString& userId);
     void openDirectRoom  (const QString& roomId);
-    void addOnlineUser   (const QString& userId, const QString& displayName,
-                          const QString& username, const QString& bio);
+    void addOnlineUser   (const QString& userId, const QString& displayName, const QString& username, const QString& bio);
     void removeOnlineUser(const QString& userId);
+    void addKnownRoom(const QString& roomId);
 
 signals:
     void messageSent(const Message& msg);

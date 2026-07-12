@@ -1,5 +1,5 @@
 #include "ChatPanel.h"
-#include "ui/panels/UsersSidebar.h"
+#include "ui/theme/Theme.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QListWidget>
@@ -9,121 +9,101 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QMessageBox>
-
-static const char* ACCENT   = "#6366f1";
-static const char* ACCENT2  = "#818cf8";
-static const char* TEXT_PRI = "#f1f5f9";
-static const char* TEXT_SEC = "#94a3b8";
-static const char* BG_DEEP  = "#0a0f1e";
-static const char* BG_PANEL = "#0f172a";
-static const char* BG_CARD  = "#1e293b";
-static const char* BG_INPUT = "#334155";
-
-static QString inputStyle() {
-    return QString("QLineEdit{background:%1;color:%2;border:1px solid #334155;"
-        "border-radius:8px;padding:8px 12px;font-size:13px;}"
-        "QLineEdit:focus{border:1px solid %3;}").arg(BG_INPUT, TEXT_PRI, ACCENT2);
-}
-
-static QString msgBoxStyle() {
-    return QString(
-        "QMessageBox{background:%1;color:%2;}"
-        "QMessageBox QLabel{color:%2;font-size:13px;}"
-        "QMessageBox QPushButton{background:%3;color:white;border:none;"
-        "border-radius:6px;padding:6px 18px;font-size:13px;}"
-        "QMessageBox QPushButton:hover{background:%4;}")
-        .arg(BG_PANEL, TEXT_PRI, ACCENT, ACCENT2);
-}
+#include "ui/panels/UsersSidebar.h"
 
 ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
 {
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(QString("ChatPanel { %1 }").arg(Theme::pageBackground()));
+
     auto* root = new QHBoxLayout(this);
     root->setContentsMargins(0,0,0,0);
     root->setSpacing(0);
 
-    // ── room sidebar ──────────────────────────────────────────────────────
+    // ── sidebar ──────────────────────────────────────────────────────────
     auto* sidebar = new QWidget;
-    sidebar->setFixedWidth(220);
-    sidebar->setStyleSheet(QString("background:%1;border-right:1px solid #1e293b;").arg(BG_PANEL));
-    auto* sideLayout = new QVBoxLayout(sidebar);
-    sideLayout->setContentsMargins(12,16,12,12);
-    sideLayout->setSpacing(8);
+    sidebar->setObjectName("chatSidebar");
+    sidebar->setFixedWidth(240);
+    sidebar->setStyleSheet(QString(
+        "#chatSidebar { background: %1; border-right: 1px solid %2; }"
+    ).arg(Theme::SURFACE_ALT, Theme::BORDER));
 
-    auto* roomsLabel = new QLabel("ROOMS");
-    roomsLabel->setStyleSheet(QString(
-        "color:%1;font-size:11px;font-weight:bold;letter-spacing:1px;").arg(TEXT_SEC));
+    auto* sideLayout = new QVBoxLayout(sidebar);
+    sideLayout->setContentsMargins(16, 20, 16, 16);
+    sideLayout->setSpacing(10);
+
+    auto* roomsLabel = new QLabel("Rooms");
+    roomsLabel->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::heading()));
 
     roomList_ = new QListWidget;
     roomList_->setStyleSheet(QString(
-        "QListWidget{background:transparent;border:none;color:%1;}"
-        "QListWidget::item{padding:8px 10px;border-radius:6px;margin:1px 0;}"
-        "QListWidget::item:selected{background:%2;}"
-        "QListWidget::item:hover{background:%3;}").arg(TEXT_PRI, ACCENT, BG_CARD));
+        "QListWidget { background: transparent; border: none; color: %1; font-size: 13px; }"
+        "QListWidget::item { padding: 8px 10px; border-radius: 8px; margin: 1px 0px; }"
+        "QListWidget::item:selected { background: %2; color: white; }"
+        "QListWidget::item:hover:!selected { background: %3; }"
+    ).arg(Theme::TEXT_PRIMARY, Theme::ACCENT, Theme::BORDER));
 
     roomIdInput_ = new QLineEdit;
-    roomIdInput_->setPlaceholderText("room-id");
-    roomIdInput_->setStyleSheet(inputStyle());
+    roomIdInput_->setPlaceholderText("Room name");
     roomIdInput_->setFixedHeight(36);
+    roomIdInput_->setStyleSheet(Theme::textInput());
 
-    auto* btnCreate = new QPushButton("+ Create Room");
-    btnCreate->setFixedHeight(34);
-    btnCreate->setStyleSheet(QString(
-        "QPushButton{background:%1;color:white;border:none;"
-        "border-radius:6px;font-size:12px;}"
-        "QPushButton:hover{background:%2;}").arg(BG_CARD, ACCENT));
+    auto* btnCreate = new QPushButton("Create room");
+    btnCreate->setFixedHeight(36);
+    btnCreate->setStyleSheet(Theme::primaryButton());
 
     sideLayout->addWidget(roomsLabel);
     sideLayout->addWidget(roomList_, 1);
     sideLayout->addWidget(roomIdInput_);
     sideLayout->addWidget(btnCreate);
 
-    // ── chat main area ────────────────────────────────────────────────────
+    // ── main chat area ───────────────────────────────────────────────────
     auto* chatMain = new QWidget;
-    chatMain->setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    chatMain->setStyleSheet("background: transparent; border: none;");
     auto* chatLayout = new QVBoxLayout(chatMain);
     chatLayout->setContentsMargins(0,0,0,0);
     chatLayout->setSpacing(0);
 
-    // top bar
     auto* topBar = new QWidget;
+    topBar->setObjectName("chatTopBar");
     topBar->setFixedHeight(52);
-    topBar->setStyleSheet(QString("background:%1;border-bottom:1px solid #1e293b;").arg(BG_PANEL));
+    topBar->setStyleSheet(QString(
+        "#chatTopBar { background: %1; border-bottom: 1px solid %2; }"
+    ).arg(Theme::SURFACE, Theme::BORDER));
+
     auto* topLayout = new QHBoxLayout(topBar);
-    topLayout->setContentsMargins(20,0,20,0);
-    currentRoomLabel_ = new QLabel("Select or create a room");
-    currentRoomLabel_->setStyleSheet(QString(
-        "color:%1;font-size:15px;font-weight:bold;").arg(TEXT_PRI));
+    topLayout->setContentsMargins(24, 0, 24, 0);
+    currentRoomLabel_ = new QLabel("Select a room");
+    currentRoomLabel_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::bodyText()));
     topLayout->addWidget(currentRoomLabel_);
 
-    // per-room message views
     chatStack_ = new QStackedWidget;
-    chatStack_->setStyleSheet(QString("background:%1;").arg(BG_DEEP));
+    chatStack_->setStyleSheet("background: transparent; border: none;");
 
-    // empty placeholder shown before any room is selected
-    auto* placeholder = new QLabel("Join or create a room to start chatting");
+    auto* placeholder = new QLabel("No room selected.\nJoin or create a room to start chatting.");
     placeholder->setAlignment(Qt::AlignCenter);
-    placeholder->setStyleSheet(QString("color:%1;font-size:14px;").arg(TEXT_SEC));
-    chatStack_->addWidget(placeholder); // index 0 = placeholder
+    placeholder->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
+    chatStack_->addWidget(placeholder);
 
-    // input bar
     auto* inputBar = new QWidget;
+    inputBar->setObjectName("chatInputBar");
     inputBar->setFixedHeight(64);
-    inputBar->setStyleSheet(QString("background:%1;border-top:1px solid #1e293b;").arg(BG_PANEL));
+    inputBar->setStyleSheet(QString(
+        "#chatInputBar { background: %1; border-top: 1px solid %2; }"
+    ).arg(Theme::SURFACE, Theme::BORDER));
+
     auto* inputLayout = new QHBoxLayout(inputBar);
     inputLayout->setContentsMargins(16,12,16,12);
     inputLayout->setSpacing(10);
 
     messageInput_ = new QLineEdit;
-    messageInput_->setPlaceholderText("Message...");
+    messageInput_->setPlaceholderText("Type a message...");
     messageInput_->setFixedHeight(40);
-    messageInput_->setStyleSheet(inputStyle());
+    messageInput_->setStyleSheet(Theme::textInput());
 
     auto* btnSend = new QPushButton("Send");
-    btnSend->setFixedSize(80,40);
-    btnSend->setStyleSheet(QString(
-        "QPushButton{background:%1;color:white;border:none;"
-        "border-radius:8px;font-weight:bold;}"
-        "QPushButton:hover{background:%2;}").arg(ACCENT, ACCENT2));
+    btnSend->setFixedSize(90, 40);
+    btnSend->setStyleSheet(Theme::primaryButton());
 
     inputLayout->addWidget(messageInput_);
     inputLayout->addWidget(btnSend);
@@ -137,7 +117,7 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     root->addWidget(chatMain, 1);
     root->addWidget(usersSidebar_);
 
-    // ── connections ───────────────────────────────────────────────────────
+    // ── connections ──────────────────────────────────────────────────────
     connect(btnSend,       &QPushButton::clicked,     this, &ChatPanel::onSend);
     connect(messageInput_, &QLineEdit::returnPressed, this, &ChatPanel::onSend);
     connect(btnCreate,     &QPushButton::clicked,     this, &ChatPanel::onCreateRoom);
@@ -158,10 +138,9 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     });
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
 void ChatPanel::setCurrentUser(const QString& displayName, const QString& userId)
 {
-    displayName_ = displayName;
+     displayName_ = displayName;
     userId_      = userId;
 }
 
@@ -169,14 +148,14 @@ void ChatPanel::setCurrentUser(const QString& displayName, const QString& userId
 void ChatPanel::switchToRoom(const QString& room)
 {
     currentRoom_ = room;
-    currentRoomLabel_->setText("# " + room);
+    currentRoomLabel_->setText(room);
 
     if (!roomViews_.contains(room)) {
         auto* view = new QTextEdit;
         view->setReadOnly(true);
         view->setStyleSheet(QString(
-            "QTextEdit{background:%1;color:%2;border:none;"
-            "padding:16px;font-size:13px;}").arg(BG_DEEP, TEXT_PRI));
+            "QTextEdit { background: transparent; color: %1; border: none; padding: 16px 24px; font-size: 13px; line-height: 1.5; }"
+        ).arg(Theme::TEXT_PRIMARY));
         roomViews_[room] = view;
         chatStack_->addWidget(view);
     }
@@ -184,15 +163,10 @@ void ChatPanel::switchToRoom(const QString& room)
     chatStack_->setCurrentWidget(roomViews_[room]);
 }
 
-// ── send ──────────────────────────────────────────────────────────────────────
 void ChatPanel::onSend()
 {
     if (currentRoom_.isEmpty()) {
-        auto* box = new QMessageBox(this);
-        box->setStyleSheet(msgBoxStyle());
-        box->setWindowTitle("No room");
-        box->setText("Join or create a room first.");
-        box->exec();
+        QMessageBox::warning(this, "No room selected", "Join or create a room first.");
         return;
     }
     QString text = messageInput_->text().trimmed();
@@ -212,16 +186,11 @@ void ChatPanel::onSend()
     messageInput_->clear();
 }
 
-// ── create room ───────────────────────────────────────────────────────────────
 void ChatPanel::onCreateRoom()
 {
     QString roomId = roomIdInput_->text().trimmed();
     if (roomId.isEmpty()) {
-        auto* box = new QMessageBox(this);
-        box->setStyleSheet(msgBoxStyle());
-        box->setWindowTitle("Missing");
-        box->setText("Enter a room ID.");
-        box->exec();
+        QMessageBox::warning(this, "Room name required", "Please enter a room name.");
         return;
     }
 
@@ -245,24 +214,29 @@ void ChatPanel::onCreateRoom()
     roomIdInput_->clear();
 }
 
-// ── receive incoming message ──────────────────────────────────────────────────
 void ChatPanel::receiveMessage(const Message& msg)
 {
     QString room   = QString::fromStdString(msg.roomId);
     QString sender = QString::fromStdString(msg.sender.username);
     QString text   = QString::fromStdString(msg.text);
 
+    if (msg.type == MessageType::CHAT_CREATE) {
+        if (!room.isEmpty() && msg.role != "DIRECT" && roomList_->findItems(room, Qt::MatchExactly).isEmpty())
+            roomList_->addItem(room);
+        return;
+    }
+
     if (msg.type == MessageType::JOIN) {
         joinedRooms_.insert(room);
         // add to sidebar if not there
         if (!room.isEmpty() && roomList_->findItems(room, Qt::MatchExactly).isEmpty())
             roomList_->addItem(room);
-        appendChat(room, "system", text);
+        appendChat(room, "System", text);
         return;
     }
 
     if (msg.type == MessageType::LEAVE || msg.type == MessageType::PRESENCE) {
-        appendChat(room, "system", text);
+        appendChat(room, "System", text);
         return;
     }
 
@@ -276,7 +250,6 @@ void ChatPanel::receiveMessage(const Message& msg)
     appendChat(room, sender, text);
 }
 
-// ── append to the correct room's view ────────────────────────────────────────
 void ChatPanel::appendChat(const QString& room, const QString& sender, const QString& text)
 {
     if (room.isEmpty()) return;
@@ -286,22 +259,26 @@ void ChatPanel::appendChat(const QString& room, const QString& sender, const QSt
         auto* view = new QTextEdit;
         view->setReadOnly(true);
         view->setStyleSheet(QString(
-            "QTextEdit{background:%1;color:%2;border:none;"
-            "padding:16px;font-size:13px;}").arg(BG_DEEP, TEXT_PRI));
+            "QTextEdit { background: transparent; color: %1; border: none; padding: 16px 24px; font-size: 13px; line-height: 1.5; }"
+        ).arg(Theme::TEXT_PRIMARY));
         roomViews_[room] = view;
         chatStack_->addWidget(view);
     }
 
-    bool isSystem = (sender == "system");
+    bool isSystem = (sender == "System");
     bool isMe     = (sender == displayName_);
-    QString color = isSystem ? "#475569" : isMe ? "#818cf8" : "#4ade80";
+
+    QString color = isSystem ? Theme::TEXT_SECONDARY : isMe ? Theme::TEXT_PRIMARY : Theme::ACCENT;
 
     auto* view = roomViews_[room];
     view->append(
-        QString("<span style='color:%1;font-weight:600;'>%2</span>"
-                "<span style='color:#475569;'>&nbsp;&nbsp;</span>"
-                "<span style='color:#e2e8f0;'>%3</span>")
-        .arg(color, sender.toHtmlEscaped(), text.toHtmlEscaped()));
+        QString("<div style='margin-bottom: 10px;'>"
+                "<span style='color:%1; font-weight:600;'>%2</span>"
+                "&nbsp;&nbsp;"
+                "<span style='color:%3;'>%4</span>"
+                "</div>")
+        .arg(color, sender.toHtmlEscaped(), Theme::TEXT_PRIMARY, text.toHtmlEscaped()));
+
     view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum());
 
     // if this room is currently active, make sure stack shows it
@@ -331,4 +308,12 @@ void ChatPanel::openDirectRoom(const QString& roomId)
     auto items = roomList_->findItems(roomId, Qt::MatchExactly);
     if (!items.isEmpty())
         roomList_->setCurrentItem(items.first());
+}
+
+
+void ChatPanel::addKnownRoom(const QString& roomId)
+{
+    if (roomList_->findItems(roomId, Qt::MatchExactly).isEmpty())
+        roomList_->addItem(roomId);
+    joinedRooms_.insert(roomId);
 }

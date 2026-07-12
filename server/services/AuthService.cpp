@@ -1,5 +1,5 @@
 #include "AuthService.h"
-#include "database/Database.h"
+#include "store/InMemoryStore.h"
 #include "models/UserRecord.h"
 #include "AuthToken.h"
 #include "Server.h"
@@ -13,7 +13,7 @@
 
 
 //creates AuthService and gives it access to the in database
-AuthService::AuthService(Database& store) : store_(store){}
+AuthService::AuthService(InMemoryStore& store) : store_(store){}
 
 //logs a user into the system
 void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sender)
@@ -50,11 +50,15 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
     store_.addSession(token);                   //store the token
 
     // kick any existing session for this account
-    if (server_) {
-        auto existing = server_->findSessionByUserId(userOpt->userId);
-        if (existing && existing != sender) {
-            existing->disconnect();
+    try {
+        if (server_) {
+            auto existing = server_->findSessionByUserId(userOpt->userId);
+            if (existing && existing != sender) {
+                existing->disconnect();
+            }
         }
+    } catch (const std::exception& e) {
+        std::cerr << "Session kick error: " << e.what() << "\n";
     }
 
     sender->setUserId(userOpt->userId);                             //stores the logged-in user's ID inside the Session
@@ -64,6 +68,7 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
     sendSuccess(token.sessionId, token.role, token.displayName, sender);  //tell the client login succeeded
 
     //broadcast presence
+
     Message presence;
     presence.type              = MessageType::PRESENCE;
     presence.sender.userId     = userOpt->userId;
@@ -71,6 +76,57 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
     presence.displayName       = userOpt->displayName;
     presence.bio               = userOpt->bio;
     if (server_) server_->broadcast(presence, sender);
+
+    auto rooms = store_.getPublicRooms();
+    for (auto& room : rooms) {
+        Message roomMsg;
+        roomMsg.type   = MessageType::JOIN;
+        roomMsg.roomId = room.roomId;
+        roomMsg.text   = room.name;
+        roomMsg.role   = "PUBLIC";
+        sender->send(roomMsg);
+    }
+
+    auto listings = store_.searchListings("");  // empty = all active
+    for (auto& l : listings) {
+        Message m;
+        m.type            = MessageType::MARKET_POST;
+        m.parentId        = l.listingId;
+        m.title           = l.title;
+        m.price           = l.price;
+        m.text            = l.description;
+        m.mediaUrl        = l.mediaUrl;
+        m.sender.userId   = l.sellerUserId;
+        m.sender.username = l.sellerUsername;
+        m.timestamp       = l.createdAt;
+        sender->send(m);
+    }
+
+    auto questions = store_.getAllQuestions();
+    for (auto& q : questions) {
+        Message m;
+        m.type            = MessageType::QA_QUESTION;
+        m.parentId        = q.questionId;
+        m.title           = q.title;
+        m.text            = q.text;
+        m.sender.username = q.authorUsername;
+        m.timestamp       = q.timestamp;
+        sender->send(m);
+    }
+
+    auto files = store_.getAllFiles();
+    for (auto& f : files) {
+        Message m;
+        m.type            = MessageType::MATERIAL_UPLOAD;
+        m.parentId        = f.fileId;
+        m.filename        = f.filename;
+        m.mediaUrl        = f.url;
+        m.text            = f.fileSize;
+        m.sender.userId   = f.uploaderUserId;
+        m.sender.username = f.uploaderUsername;
+        m.timestamp       = f.uploadedAt;
+        sender->send(m);
+    }
 
 }
 
@@ -123,12 +179,16 @@ std::string AuthService::hashPassword(const std::string& plain)
 //sends a successful login message to the client
 void AuthService::sendSuccess(const std::string& sessionId, const std::string& role, const std::string& displayName, std::shared_ptr<Session> sender)
 {
-    Message resp;
-    resp.type        = MessageType::AUTH_RESPONSE;
-    resp.token       = sessionId;   //client stores this and attaches to all future messages
-    resp.text        = "Login successful";
-    resp.displayName = displayName;
-    resp.role        = role;
+   auto tokenOpt = store_.findSession(sessionId);
+
+   Message resp;
+    resp.type              = MessageType::AUTH_RESPONSE;
+    resp.token             = sessionId;
+    resp.text              = "Login successful";
+    resp.displayName       = displayName;
+    resp.role              = role;
+    resp.sender.userId     = tokenOpt ? tokenOpt->userId   : sender->userId();
+    resp.sender.username   = tokenOpt ? tokenOpt->username : "";
     sender->send(resp);
 }
 

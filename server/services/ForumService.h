@@ -3,12 +3,12 @@
 #include "Message.h"
 
 class Session;
-class Database;
+class InMemoryStore;
 class Server;
 
 class ForumService {
 public:
-    explicit ForumService(Database& store);
+    explicit ForumService(InMemoryStore& store);
 
     void handleQuestion(const Message& msg, std::shared_ptr<Session> sender); // post question
     void handleAnswer (const Message& msg, std::shared_ptr<Session> sender); // post answer
@@ -24,6 +24,6 @@ private:
     void sendError(const std::string& reason, std::shared_ptr<Session> sender);
     void sendOk (const std::string& text, std::shared_ptr<Session> sender);
 
-    Database& store_;
+    InMemoryStore& store_;
     Server* server_ = nullptr;
 };

@@ -5,7 +5,7 @@
 
 class Session;
 class Server;
-class Database;
+class InMemoryStore;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  AuthService
@@ -24,7 +24,7 @@ class Database;
 class AuthService
 {
 public:
-    AuthService(Database& store);
+    AuthService(InMemoryStore& store);
     void setServer(Server& server);
     void handleLogin (const Message& msg, std::shared_ptr<Session> sender);
     void handleLogout(const Message& msg, std::shared_ptr<Session> sender);
@@ -37,6 +37,6 @@ private:
     void sendSuccess(const std::string& sessionId, const std::string& role, const std::string& displayName, std::shared_ptr<Session> sender);
     void sendError  (const std::string& reason, std::shared_ptr<Session> sender);
 
-    Database& store_;
+    InMemoryStore& store_;
     Server* server_ = nullptr;
 };

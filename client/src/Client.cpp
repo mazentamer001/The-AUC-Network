@@ -75,6 +75,7 @@ void Client::do_send(std::shared_ptr<std::string> payload)
 
 void Client::do_read()
 {
+    std::cout << "[do_read called]" << std::endl;
     boost::asio::async_read_until(
         socket_, buffer_, '\n',
         [this](boost::system::error_code ec, std::size_t)
@@ -84,6 +85,7 @@ void Client::do_read()
                 std::istream is(&buffer_);
                 std::string line;
                 std::getline(is, line);
+                std::cout << "[CLIENT RECEIVED] " << line << std::endl;
 
                 try
                 {

@@ -1,5 +1,5 @@
 #include "services/FileStorageService.h"
-#include "database/Database.h"
+#include "store/InMemoryStore.h"
 #include "models/FileRecord.h"
 #include "Session.h"
 #include "Server.h" 
@@ -14,7 +14,7 @@
 namespace fs = std::filesystem;
 
 //takes the database and a folder where the uploaded files will be saved
-FileStorageService::FileStorageService(Database& store, const std::string& uploadDir) : store_(store), uploadDir_(uploadDir)
+FileStorageService::FileStorageService(InMemoryStore& store, const std::string& uploadDir) : store_(store), uploadDir_(uploadDir)
 {
     fs::create_directories(uploadDir_);
 }

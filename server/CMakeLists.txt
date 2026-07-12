@@ -28,7 +28,8 @@ add_executable(Server
     networking/Server.cpp
     networking/Session.cpp
     networking/Dispatcher.cpp
-    database/Database.cpp
+    store/Database.cpp
+    store/InMemoryStore.cpp 
     services/AuthService.cpp
     services/RegistrationService.cpp
     services/ProfileService.cpp
@@ -45,7 +46,6 @@ target_include_directories(Server PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/store
     ${CMAKE_CURRENT_SOURCE_DIR}/networking
     ${CMAKE_CURRENT_SOURCE_DIR}/models
-    ${CMAKE_CURRENT_SOURCE_DIR}/database
     ${CMAKE_CURRENT_SOURCE_DIR}/../shared/include
 )
 

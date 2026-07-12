@@ -3,7 +3,7 @@ project(Client LANGUAGES CXX)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 find_package(Threads REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -20,7 +20,7 @@ target_include_directories(ClientLib PUBLIC
     include
 )
 
-target_link_libraries(ClientLib PUBLIC Boost::system Threads::Threads Shared)
+target_link_libraries(ClientLib PUBLIC Threads::Threads Shared)
 
 add_executable(build001 src/main.cpp)
 set_target_properties(build001 PROPERTIES AUTOMOC OFF)

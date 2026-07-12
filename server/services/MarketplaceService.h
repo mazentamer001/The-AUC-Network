@@ -4,11 +4,11 @@
 
 class Session;
 class Server;
-class Database;
+class InMemoryStore;
 
 class MarketplaceService {
 public:
-    MarketplaceService(Database& store);
+    MarketplaceService(InMemoryStore& store);
     void setServer(Server& server) { server_ = &server; }
 
     void handlePost (const Message& msg, std::shared_ptr<Session> sender); // create listing
@@ -23,5 +23,5 @@ private:
     void sendOk (const std::string& text,   std::shared_ptr<Session> sender);
 
     Server* server_ = nullptr;
-    Database& store_;
+    InMemoryStore& store_;
 };

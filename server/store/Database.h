@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  Database
 //  Single SQLite database backing all server data.
+//  Same public interface as InMemoryStore — drop-in replacement.
 //  Thread-safe via a single mutex.
 // ─────────────────────────────────────────────────────────────────────────────
 class Database
@@ -87,8 +88,49 @@ private:
     AuthToken    rowToToken  (SQLite::Statement& q);
     ChatMessage  rowToMessage(SQLite::Statement& q);
     Listing      rowToListing(SQLite::Statement& q);
-    ForumQuestion loadQuestion(const std::string& questionId);
 
     std::unique_ptr<SQLite::Database> db_;
     std::mutex                        mutex_;
+
+    bool addUser_nolock(const UserRecord&);
+    std::optional<UserRecord> findUserById_nolock(const std::string&);
+    std::optional<UserRecord> findUserByUsername_nolock(const std::string&);
+    std::optional<UserRecord> findUserByEmail_nolock(const std::string&);
+    std::optional<UserRecord> findUserByUniversityId_nolock(const std::string&);
+    bool updateUser_nolock(const std::string&, const UserRecord&);
+    std::vector<UserRecord> getAllUsers_nolock();
+
+    void addSession_nolock(const AuthToken&);
+    std::optional<AuthToken> findSession_nolock(const std::string&);
+    void removeSession_nolock(const std::string&);
+
+    bool createRoom_nolock(const ChatRoom&);
+    std::optional<ChatRoom> findRoom_nolock(const std::string&);
+    bool addMemberToRoom_nolock(const std::string&, const std::string&);
+    bool isMember_nolock(const std::string&, const std::string&);
+    bool addMessageToRoom_nolock(const std::string&, const ChatMessage&);
+    std::vector<ChatMessage> getRoomHistory_nolock(const std::string&, int);
+    std::vector<ChatRoom> getPublicRooms_nolock();
+
+    bool addListing_nolock(const Listing&);
+    std::optional<Listing> findListing_nolock(const std::string&);
+    std::vector<Listing> searchListings_nolock(const std::string&);
+    std::vector<Listing> getListingsByUser_nolock(const std::string&);
+    bool deleteListing_nolock(const std::string&, const std::string&);
+    bool markListingSold_nolock(const std::string&);
+
+    bool addQuestion_nolock(const ForumQuestion&);
+    std::optional<ForumQuestion> findQuestion_nolock(const std::string&);
+    ForumQuestion loadQuestion_nolock(const std::string&); 
+    bool addAnswer_nolock(const std::string&, const ForumAnswer&);
+    bool markAnswerFaq_nolock(const std::string&, const std::string&, const std::string&);
+    bool voteQuestion_nolock(const std::string&, const std::string&, bool);
+    bool voteAnswer_nolock(const std::string&, const std::string&, const std::string&, bool);
+    std::vector<ForumQuestion> getAllQuestions_nolock();
+    std::vector<ForumAnswer> getFaqAnswers_nolock(const std::string&);
+
+    bool addFile_nolock(const FileRecord&);
+    std::optional<FileRecord> findFile_nolock(const std::string&);
+    std::vector<FileRecord> getAllFiles_nolock();
+    bool flagFile_nolock(const std::string&, const std::string&);
 };
