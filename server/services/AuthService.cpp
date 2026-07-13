@@ -78,25 +78,6 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
         sender->send(roomMsg);
     }
 
-    auto privateRooms = store_.getRoomsForUser(userOpt->userId);
-    for (auto& room : privateRooms) {
-        if (room.type == RoomType::PUBLIC || room.type == RoomType::DIRECT)
-            continue; // public already sent above; direct rooms open on-demand via handlePrivate
-
-        std::string memberList;
-        for (size_t i = 0; i < room.memberIds.size(); ++i) {
-            memberList += room.memberIds[i];
-            if (i + 1 < room.memberIds.size()) memberList += ",";
-        }
-
-        Message roomMsg;
-        roomMsg.type     = MessageType::JOIN;
-        roomMsg.roomId   = room.roomId;
-        roomMsg.text     = room.name;
-        roomMsg.role     = "GROUP";
-        roomMsg.mediaUrl = memberList;
-        sender->send(roomMsg);
-    }
 
     auto listings = store_.searchListings("");  // empty = all active
     for (auto& l : listings) {
@@ -152,6 +133,26 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
         sender->send(presence);
     }
 
+    auto userRooms = store_.getRoomsForUser(userOpt->userId);
+    for (auto& room : userRooms) {
+        if (room.type == RoomType::PUBLIC)
+            continue; // already sent via getPublicRooms() above
+
+        std::string memberList;
+        for (size_t i = 0; i < room.memberIds.size(); ++i) {
+            memberList += room.memberIds[i];
+            if (i + 1 < room.memberIds.size()) memberList += ",";
+        }
+
+        Message roomMsg;
+        roomMsg.type     = MessageType::JOIN;
+        roomMsg.roomId   = room.roomId;
+        roomMsg.text     = room.name;
+        roomMsg.role     = (room.type == RoomType::DIRECT) ? "DIRECT" : "GROUP";
+        roomMsg.mediaUrl = memberList;
+        sender->send(roomMsg);
+    }
+
    if (server_) {
         auto onlineUsers = server_->getOnlineUserIds();
         for (auto& uid : onlineUsers) {
@@ -185,9 +186,21 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
 //logs the user out
 void AuthService::handleLogout(const Message& msg, std::shared_ptr<Session> sender)
 {
+    std::string userId = sender->userId();   //grab before it's cleared below
+
     store_.removeSession(msg.token);                            //remove token from database
-    if (server_) server_->unregisterUser(sender->userId());     //Remove user from server user map
-    sender->setUserId("");                                      //clear the session's stored ID
+    if (server_) server_->unregisterUser(userId);                //Remove user from server user map
+    sender->setUserId("");                                       //clear the session's stored ID
+
+    if (server_ && !userId.empty()) {
+        auto userOpt = store_.findUserById(userId);
+        Message offline;
+        offline.type            = MessageType::USER_OFFLINE;
+        offline.sender.userId   = userId;
+        offline.sender.username = userOpt ? userOpt->username    : msg.sender.username;
+        offline.displayName     = userOpt ? userOpt->displayName : "";
+        server_->broadcast(offline, sender);
+    }
 
     //send a message
     Message resp;

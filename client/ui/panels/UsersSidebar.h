@@ -10,6 +10,7 @@ class QScrollArea;
 
 enum class UserStatus { OFFLINE, ONLINE, AWAY };
 
+// ── single user card ──────────────────────────────────────────────────────────
 class UserCard : public QWidget {
     Q_OBJECT
 public:
@@ -20,7 +21,8 @@ public:
     void setStatus(UserStatus status);
 
 signals:
-    void clicked(const QString& userId);
+    void viewProfileClicked(const QString& userId);
+    void messageClicked(const QString& userId);
 
 private:
     void mousePressEvent(QMouseEvent*) override;
@@ -32,6 +34,7 @@ private:
     QLabel*     avatarLabel_;
 };
 
+// ── users sidebar ─────────────────────────────────────────────────────────────
 class UsersSidebar : public QWidget {
     Q_OBJECT
 public:
@@ -43,13 +46,13 @@ public:
     void setUserStatus(const QString& userId, UserStatus status);
     void setCurrentUser(const QString& userId) { currentUserId_ = userId; }
 
-    // NEW — switch the panel between "everyone" (public rooms) and
-    // "just these people" (private/direct rooms)
     void showAllUsers();
     void filterToUsers(const QSet<QString>& userIds);
+    void clearAll();  
 
 signals:
-    void userClicked(const QString& userId);
+    void profileRequested(const QString& userId);
+    void messageRequested(const QString& userId);
 
 private:
     void updateCount();

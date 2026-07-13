@@ -26,6 +26,7 @@ public:
     void removeOnlineUser(const QString& userId);
     void addKnownRoom(const QString& roomId);
     void setUserStatus(const QString& userId, UserStatus status);
+     void resetState();
 
 signals:
     void messageSent(const Message& msg);
@@ -35,6 +36,8 @@ signals:
 private slots:
     void onSend();
     void onCreateRoom();
+    void onMessageUser(const QString& userId);  
+    void onViewProfile(const QString& userId); 
 
 private:
     struct RoomMeta {
@@ -46,6 +49,7 @@ private:
     void appendChat  (const QString& roomId, const QString& sender, const QString& text);
     QListWidgetItem* ensureRoomListItem(const QString& roomId, const QString& name);
     void applyMemberFilter(const QString& roomId);
+    QString resolveDirectRoomName(const QString& roomId) const; 
 
     QListWidget*              roomList_;
     QStackedWidget*           chatStack_;

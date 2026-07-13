@@ -259,3 +259,7 @@ void MainShell::setChatUserStatus(const QString& userId, UserStatus status)
 {
     chatPanel_->setUserStatus(userId, status);
 }
+void MainShell::resetChat()
+{
+    chatPanel_->resetState();
+}

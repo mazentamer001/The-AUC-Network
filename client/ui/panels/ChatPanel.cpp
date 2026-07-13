@@ -109,6 +109,8 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     chatLayout->addWidget(inputBar);
 
     usersSidebar_ = new UsersSidebar;
+    connect(usersSidebar_, &UsersSidebar::messageRequested, this, &ChatPanel::onMessageUser);
+    connect(usersSidebar_, &UsersSidebar::profileRequested,  this, &ChatPanel::onViewProfile);
     root->addWidget(sidebar);
     root->addWidget(chatMain, 1);
     root->addWidget(usersSidebar_);
@@ -200,11 +202,26 @@ void ChatPanel::onSend()
     if (text.isEmpty()) return;
 
     Message msg;
-    msg.type            = MessageType::CHAT_PUBLIC;
-    msg.roomId          = currentRoom_.toStdString();
     msg.text            = text.toStdString();
     msg.sender.username = displayName_.toStdString();
     msg.sender.userId   = userId_.toStdString();
+
+    if (currentRoom_.startsWith("direct:")) {
+        // direct room — extract the other participant's id from the deterministic roomId
+        QStringList parts = currentRoom_.split(':');
+        QString otherId;
+        if (parts.size() == 3)
+            otherId = (parts[1] == userId_) ? parts[2] : parts[1];
+
+        msg.type        = MessageType::CHAT_PRIVATE;
+        msg.recipientId = otherId.toStdString();
+        // note: no roomId set here — handlePrivate derives/creates the room itself
+        // and echoes the message back to us with roomId filled in, so we don't
+        // need to guess it locally for the outgoing message
+    } else {
+        msg.type   = MessageType::CHAT_PUBLIC;
+        msg.roomId = currentRoom_.toStdString();
+    }
 
     appendChat(currentRoom_, displayName_, text);
 
@@ -285,8 +302,12 @@ void ChatPanel::receiveMessage(const Message& msg)
             meta.members = mediaUrl.split(',', Qt::SkipEmptyParts);
         roomMeta_[roomId] = meta;
 
-        ensureRoomListItem(roomId, text.isEmpty() ? roomId : text);   // ← fixed
-        appendChat(roomId, "System", "joined " + (text.isEmpty() ? roomId : text));
+        QString displayName = (meta.type == "DIRECT")
+            ? resolveDirectRoomName(roomId)
+            : (text.isEmpty() ? roomId : text);
+
+        ensureRoomListItem(roomId, displayName);
+        appendChat(roomId, "System", "joined " + displayName);
 
         if (roomId == currentRoom_)
             applyMemberFilter(roomId);
@@ -353,7 +374,8 @@ void ChatPanel::removeOnlineUser(const QString& userId)
 
 void ChatPanel::openDirectRoom(const QString& roomId)
 {
-    ensureRoomListItem(roomId, roomNames_.value(roomId, roomId));
+    QString displayName = resolveDirectRoomName(roomId);
+    ensureRoomListItem(roomId, displayName);
 
     RoomMeta meta = roomMeta_.value(roomId);
     meta.type = "DIRECT";
@@ -384,4 +406,57 @@ void ChatPanel::addKnownRoom(const QString& roomId)
 void ChatPanel::setUserStatus(const QString& userId, UserStatus status)
 {
     usersSidebar_->setUserStatus(userId, status);
+}
+
+void ChatPanel::onMessageUser(const QString& userId)
+{
+    if (userId.isEmpty() || userId == userId_) return;
+
+    // mirror the server's deterministic direct-room id: direct:sortedUid1:sortedUid2
+    QString uid1 = userId_, uid2 = userId;
+    if (uid1 > uid2) { QString tmp = uid1; uid1 = uid2; uid2 = tmp; }
+    QString roomId = "direct:" + uid1 + ":" + uid2;
+
+    openDirectRoom(roomId);
+}
+
+void ChatPanel::onViewProfile(const QString& userId)
+{
+    QString name = knownUsers_.value(userId, userId);
+    QMessageBox::information(this, "Profile",
+        "Viewing " + name + "'s profile — coming soon.");
+}
+
+QString ChatPanel::resolveDirectRoomName(const QString& roomId) const
+{
+    if (!roomId.startsWith("direct:")) return roomId;
+    QStringList parts = roomId.split(':');
+    if (parts.size() != 3) return roomId;
+    QString otherId = (parts[1] == userId_) ? parts[2] : parts[1];
+    return knownUsers_.value(otherId, otherId); // falls back to raw id if name unknown
+}
+
+void ChatPanel::resetState()
+{
+    roomList_->clear();
+    chatStack_->setCurrentIndex(0); // back to the "no room selected" placeholder
+
+    // roomViews_ holds QTextEdit* owned by chatStack_ — remove + delete them
+    for (auto* view : roomViews_) {
+        chatStack_->removeWidget(view);
+        view->deleteLater();
+    }
+    roomViews_.clear();
+
+    joinedRooms_.clear();
+    roomNames_.clear();
+    roomMeta_.clear();
+    knownUsers_.clear();
+
+    currentRoom_.clear();
+    currentRoomLabel_->setText("Select a room");
+
+    usersSidebar_->showAllUsers();
+    usersSidebar_->clearAll();
+
 }

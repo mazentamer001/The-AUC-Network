@@ -86,7 +86,12 @@ void MainWindow::closeEvent(QCloseEvent* event)
 }
 
 // ── page navigation ───────────────────────────────────────────────────────────
-void MainWindow::showHome()     { stack_->setCurrentIndex(0); token_.clear(); }
+void MainWindow::showHome()
+{
+    stack_->setCurrentIndex(0);
+    token_.clear();
+    if (mainShell_) mainShell_->resetChat();
+}
 void MainWindow::showRegister() { stack_->setCurrentIndex(1); }
 void MainWindow::showLogin()    { stack_->setCurrentIndex(2); }
 void MainWindow::showShell()    { stack_->setCurrentIndex(3); }

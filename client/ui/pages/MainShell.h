@@ -21,6 +21,7 @@ public:
                         const QString& username,    const QString& token);
     void routeMessage(const Message& msg);
     void setChatUserStatus(const QString& userId, UserStatus status);
+    void resetChat(); 
 
 signals:
     void sendMessage(const Message& msg);

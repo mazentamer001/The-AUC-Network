@@ -5,6 +5,8 @@
 #include <QScrollArea>
 #include <QMouseEvent>
 #include <QGraphicsDropShadowEffect>
+#include <QMenu>
+#include <QAction>
 
 static const char* ACCENT2  = "#818cf8";
 static const char* TEXT_PRI = "#f1f5f9";
@@ -82,7 +84,6 @@ UserCard::UserCard(const QString& userId, const QString& displayName,
     layout->addLayout(infoLayout, 1);
 }
 
-void UserCard::mousePressEvent(QMouseEvent*) { emit clicked(userId_); }
 
 void UserCard::setStatus(UserStatus status)
 {
@@ -181,20 +182,6 @@ UsersSidebar::UsersSidebar(QWidget* parent) : QWidget(parent)
     root->addWidget(scroll, 1);
 }
 
-void UsersSidebar::addUser(const QString& userId, const QString& displayName, const QString& username, const QString& bio)
-{
-    if (cards_.contains(userId)) return;
-
-    auto* card = new UserCard(userId, displayName, username, bio);
-    cards_[userId] = card;
-    cardsLayout_->addWidget(card);
-    
-    if (filterActive_)
-        card->setVisible(currentFilter_.contains(userId));
-
-    updateCount();
-    connect(card, &UserCard::clicked, this, &UsersSidebar::userClicked);
-}
 
 void UsersSidebar::removeUser(const QString& userId)
 {
@@ -233,5 +220,53 @@ void UsersSidebar::showAllUsers()
     currentFilter_.clear();
     for (auto* card : cards_)
         card->setVisible(true);
+    updateCount();
+}
+
+void UserCard::mousePressEvent(QMouseEvent* event)
+{
+    QMenu menu(this);
+    menu.setStyleSheet(QString(
+        "QMenu { background: %1; color: %2; border: 1px solid #334155; border-radius: 6px; padding: 4px; }"
+        "QMenu::item { padding: 6px 16px; border-radius: 4px; }"
+        "QMenu::item:selected { background: %3; color: white; }"
+    ).arg(BG_CARD, TEXT_PRI, ACCENT2));
+
+    QAction* viewProfileAction = menu.addAction("View Profile");
+    QAction* messageAction     = menu.addAction("Message");
+
+    QAction* chosen = menu.exec(event->globalPosition().toPoint());
+
+    if (chosen == viewProfileAction)
+        emit viewProfileClicked(userId_);
+    else if (chosen == messageAction)
+        emit messageClicked(userId_);
+}
+
+void UsersSidebar::addUser(const QString& userId, const QString& displayName,
+                            const QString& username, const QString& bio)
+{
+    if (cards_.contains(userId)) return;
+
+    auto* card = new UserCard(userId, displayName, username, bio);
+    cards_[userId] = card;
+    cardsLayout_->addWidget(card);
+
+    if (filterActive_)
+        card->setVisible(currentFilter_.contains(userId));
+
+    updateCount();
+
+    connect(card, &UserCard::viewProfileClicked, this, &UsersSidebar::profileRequested);
+    connect(card, &UserCard::messageClicked,      this, &UsersSidebar::messageRequested);
+}   
+
+void UsersSidebar::clearAll()
+{
+    for (auto* card : cards_)
+        card->deleteLater();
+    cards_.clear();
+    filterActive_ = false;
+    currentFilter_.clear();
     updateCount();
 }
