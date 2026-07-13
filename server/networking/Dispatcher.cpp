@@ -106,6 +106,17 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
     case MessageType::MATERIAL_GET:
         fileStorage_.handleGetFile(msg, sender);   break;
 
+    case MessageType::USER_AWAY:
+        if (server_) server_->setUserAway(sender->userId(), true);
+        if (server_) server_->broadcast(msg, sender);
+        break;
+
+    case MessageType::USER_ONLINE:
+        if (server_) server_->setUserAway(sender->userId(), false);
+        if (server_) server_->broadcast(msg, sender);
+        break;
+
+
     default:
         std::cerr << "Dispatcher: unhandled type\n";
         sendError("Unknown message type", sender); break;

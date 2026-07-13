@@ -24,28 +24,63 @@ void ChatService::handleCreate(const Message& msg, std::shared_ptr<Session> send
     room.creatorId = sender->userId();
     room.createdAt = currentTimestamp();
 
-    //type comes from msg.role field: "PUBLIC", "GROUP", "DIRECT"
     if (msg.role == "GROUP")  room.type = RoomType::GROUP;
     else if (msg.role == "DIRECT") room.type = RoomType::DIRECT;
     else room.type = RoomType::PUBLIC;
 
-    //creator is always a member
+    // creator is always a member
     room.memberIds.push_back(sender->userId());
+
+    // for private/group rooms, add the invited members (comma-separated userIds in mediaUrl)
+    if (room.type == RoomType::GROUP && !msg.mediaUrl.empty())
+    {
+        std::stringstream ss(msg.mediaUrl);
+        std::string memberId;
+        while (std::getline(ss, memberId, ','))
+        {
+            if (!memberId.empty() && memberId != sender->userId())
+                room.memberIds.push_back(memberId);
+        }
+    }
 
     if (!store_.createRoom(room))
     { sendError("Room ID already exists", sender); return; }
 
     std::cout << "Room created: " << room.roomId << " (" << msg.role << ")\n";
+
+    // pack the member list so clients can populate the room's right-side member panel
+    std::string memberList;
+    for (size_t i = 0; i < room.memberIds.size(); ++i) {
+        memberList += room.memberIds[i];
+        if (i + 1 < room.memberIds.size()) memberList += ",";
+    }
+
     Message notif;
-    notif.type   = MessageType::CHAT_CREATE;
-    notif.roomId = room.roomId;
-    notif.text   = room.name;
-    notif.role   = msg.role;
+    notif.type     = MessageType::CHAT_CREATE;
+    notif.roomId   = room.roomId;
+    notif.text     = room.name;
+    notif.role     = msg.role;
+    notif.mediaUrl = memberList;
     notif.sender.userId   = sender->userId();
     notif.sender.username = msg.sender.username;
-    if (server_) server_->broadcast(notif, sender);
 
-    sendOk("Room '" + room.name + "' created", sender); //tell the client the room is created successfully
+    if (server_)
+    {
+        if (room.type == RoomType::GROUP)
+        {
+            // private room — only the invited members get notified, not everyone
+            for (const auto& memberId : room.memberIds)
+                if (memberId != sender->userId())
+                    server_->sendTo(memberId, notif);
+        }
+        else
+        {
+            // public room — announce to everyone
+            server_->broadcast(notif, sender);
+        }
+    }
+
+    sendOk("Room '" + room.name + "' created", sender);
 }
 
 //join a room

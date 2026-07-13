@@ -2,6 +2,7 @@
 #include <QWidget>
 #include <QStackedWidget>
 #include "Message.h"
+#include "ui/panels/UsersSidebar.h"
 
 class QToolButton;
 class QTextEdit;
@@ -19,6 +20,7 @@ public:
     void setCurrentUser(const QString& displayName, const QString& userId,
                         const QString& username,    const QString& token);
     void routeMessage(const Message& msg);
+    void setChatUserStatus(const QString& userId, UserStatus status);
 
 signals:
     void sendMessage(const Message& msg);

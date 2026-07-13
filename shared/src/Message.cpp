@@ -36,6 +36,9 @@ std::string Message::typeToString(MessageType t)
     case MessageType::QA_GET_ALL:       return "QA_GET_ALL";
     case MessageType::QA_GET_ONE:       return "QA_GET_ONE";
     case MessageType::ERROR:            return "ERROR";
+    case MessageType::USER_ONLINE:   return "USER_ONLINE";
+    case MessageType::USER_AWAY:     return "USER_AWAY";
+    case MessageType::USER_OFFLINE:  return "USER_OFFLINE";
     default:                            return "UNKNOWN";
     }
 }
@@ -73,6 +76,9 @@ MessageType Message::stringToType(const std::string& s)
     if (s == "ERROR")           return MessageType::ERROR;
     if (s == "FORUM_UPVOTE")    return MessageType::FORUM_UPVOTE;
     if (s == "FORUM_DOWNVOTE")  return MessageType::FORUM_DOWNVOTE;
+    if (s == "USER_ONLINE")  return MessageType::USER_ONLINE;
+    if (s == "USER_AWAY")    return MessageType::USER_AWAY;
+    if (s == "USER_OFFLINE") return MessageType::USER_OFFLINE;
     return MessageType::UNKNOWN;
 }
 

@@ -571,6 +571,32 @@ std::vector<ChatRoom> Database::getPublicRooms_nolock()
     return result;
 }
 
+std::vector<ChatRoom> Database::getRoomsForUser(const std::string& userId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return getRoomsForUser_nolock(userId);
+}
+
+std::vector<ChatRoom> Database::getRoomsForUser_nolock(const std::string& userId)
+{
+    std::vector<ChatRoom> result;
+    SQLite::Statement q(*db_,
+        "SELECT roomId FROM chat_members WHERE userId=?");
+    q.bind(1, userId);
+
+    std::vector<std::string> roomIds;
+    while (q.executeStep())
+        roomIds.push_back(q.getColumn(0).getText());
+
+    // reuse findRoom_nolock so member lists come back populated,
+    // without re-locking the mutex (we already hold it)
+    for (auto& id : roomIds) {
+        auto room = findRoom_nolock(id);
+        if (room) result.push_back(*room);
+    }
+    return result;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  MARKETPLACE
 // ─────────────────────────────────────────────────────────────────────────────

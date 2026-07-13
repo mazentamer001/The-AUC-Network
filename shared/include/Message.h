@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <unordered_set>
 
 //Message class is the common format the client and server use to communicate
 
@@ -21,7 +22,9 @@ enum class MessageType {
     //system
     ERROR, UNKNOWN,
     //forum votes
-    FORUM_UPVOTE, FORUM_DOWNVOTE
+    FORUM_UPVOTE, FORUM_DOWNVOTE,
+    // User status
+    USER_ONLINE, USER_AWAY, USER_OFFLINE
 };
 
 struct SenderInfo {

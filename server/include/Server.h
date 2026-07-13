@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include "Message.h"
+#include <unordered_set>
 
 using boost::asio::ip::tcp;
 
@@ -35,6 +36,9 @@ public:
     void registerUser(const std::string& userId, std::shared_ptr<Session> session);
     void unregisterUser(const std::string& userId);
     std::shared_ptr<Session> findSessionByUserId(const std::string& userId);
+    std::vector<std::string> getOnlineUserIds();
+    void setUserAway(const std::string& userId, bool away);
+    bool isUserAway(const std::string& userId);
 
 private:
     void do_accept();
@@ -46,4 +50,5 @@ private:
     std::mutex       sessionsMutex_;
     std::vector<std::weak_ptr<Session>> sessions_;
     std::unordered_map<std::string, std::weak_ptr<Session>> userMap_;
+    std::unordered_set<std::string> awayUsers_;
 };

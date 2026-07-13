@@ -557,3 +557,6 @@ void FilesPanel::downloadFile(const QString& id, const QString& url, const QStri
         QMessageBox::information(this, "Saved", "File saved to:\n" + savePath);
     }
 }
+
+
+

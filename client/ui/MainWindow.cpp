@@ -6,6 +6,9 @@
 #include <QVBoxLayout>
 #include <QMessageBox>
 #include <QDebug>
+#include <QApplication>
+#include <QTimer>
+#include <QEvent>
 
 MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
 {
@@ -61,6 +64,14 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
     auto* io = io_;
     connect(ioThread_, &QThread::started, [io](){ io->run(); });
     ioThread_->start();
+
+    idleTimer_ = new QTimer(this);
+    idleTimer_->setInterval(60000);
+    idleTimer_->setSingleShot(true);
+    connect(idleTimer_, &QTimer::timeout, this, &MainWindow::onIdleTimeout);
+    idleTimer_->start();
+    qApp->installEventFilter(this);
+
 }
 
 // ── clean shutdown of the networking thread ─────────────────────────────────
@@ -123,4 +134,41 @@ void MainWindow::onMessage(const Message& msg)
         mainShell_->routeMessage(msg);
         break;
     }
+}
+
+
+bool MainWindow::eventFilter(QObject*, QEvent* e)
+{
+    if (e->type() == QEvent::MouseMove || e->type() == QEvent::KeyPress) {
+        idleTimer_->start();
+        if (isAway_ && !token_.isEmpty()) {
+            isAway_ = false;
+            sendStatusUpdate("ONLINE");
+        }
+    }
+    return false;
+}
+
+void MainWindow::onIdleTimeout()
+{
+    if (!token_.isEmpty() && !isAway_) {
+        isAway_ = true;
+        sendStatusUpdate("AWAY");
+    }
+}
+
+void MainWindow::sendStatusUpdate(const QString& status)
+{
+    UserStatus s = (status == "AWAY") ? UserStatus::AWAY : UserStatus::ONLINE;
+    
+    if (mainShell_)
+        mainShell_->setChatUserStatus(userId_, s);
+
+    Message msg;
+    msg.type            = (status == "AWAY") ? MessageType::USER_AWAY
+                                             : MessageType::USER_ONLINE;
+    msg.token           = token_.toStdString();
+    msg.sender.userId   = userId_.toStdString();
+    msg.sender.username = username_.toStdString();
+    sendToServer(msg);
 }

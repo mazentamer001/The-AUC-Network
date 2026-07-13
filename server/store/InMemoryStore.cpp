@@ -26,6 +26,7 @@ bool InMemoryStore::isMember(const std::string& r, const std::string& u)     { r
 bool InMemoryStore::addMessageToRoom(const std::string& r, const ChatMessage& m) { return db_->addMessageToRoom(r, m); }
 std::vector<ChatMessage> InMemoryStore::getRoomHistory(const std::string& id) { return db_->getRoomHistory(id); }
 std::vector<ChatRoom> InMemoryStore::getPublicRooms()                         { return db_->getPublicRooms(); }
+std::vector<ChatRoom> InMemoryStore::getRoomsForUser(const std::string& userId) { return db_->getRoomsForUser(userId); }
 
 // ── marketplace ───────────────────────────────────────────────────────────────
 bool InMemoryStore::addListing(const Listing& l)                              { return db_->addListing(l); }

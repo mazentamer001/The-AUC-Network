@@ -49,6 +49,7 @@ public:
     std::vector<ChatMessage> getRoomHistory(const std::string& roomId,
                                             int limit = 100);
     std::vector<ChatRoom>    getPublicRooms();
+    std::vector<ChatRoom>    getRoomsForUser(const std::string& userId);
 
     // ── marketplace ───────────────────────────────────────────────────────
     bool                   addListing(const Listing& listing);
@@ -111,6 +112,7 @@ private:
     bool addMessageToRoom_nolock(const std::string&, const ChatMessage&);
     std::vector<ChatMessage> getRoomHistory_nolock(const std::string&, int);
     std::vector<ChatRoom> getPublicRooms_nolock();
+    std::vector<ChatRoom> getRoomsForUser_nolock(const std::string& userId);
 
     bool addListing_nolock(const Listing&);
     std::optional<Listing> findListing_nolock(const std::string&);

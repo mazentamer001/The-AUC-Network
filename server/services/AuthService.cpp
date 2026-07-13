@@ -67,15 +67,6 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
     std::cout << "User logged in: " << userOpt->username << std::endl;
     sendSuccess(token.sessionId, token.role, token.displayName, sender);  //tell the client login succeeded
 
-    //broadcast presence
-
-    Message presence;
-    presence.type              = MessageType::PRESENCE;
-    presence.sender.userId     = userOpt->userId;
-    presence.sender.username   = userOpt->username;
-    presence.displayName       = userOpt->displayName;
-    presence.bio               = userOpt->bio;
-    if (server_) server_->broadcast(presence, sender);
 
     auto rooms = store_.getPublicRooms();
     for (auto& room : rooms) {
@@ -84,6 +75,26 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
         roomMsg.roomId = room.roomId;
         roomMsg.text   = room.name;
         roomMsg.role   = "PUBLIC";
+        sender->send(roomMsg);
+    }
+
+    auto privateRooms = store_.getRoomsForUser(userOpt->userId);
+    for (auto& room : privateRooms) {
+        if (room.type == RoomType::PUBLIC || room.type == RoomType::DIRECT)
+            continue; // public already sent above; direct rooms open on-demand via handlePrivate
+
+        std::string memberList;
+        for (size_t i = 0; i < room.memberIds.size(); ++i) {
+            memberList += room.memberIds[i];
+            if (i + 1 < room.memberIds.size()) memberList += ",";
+        }
+
+        Message roomMsg;
+        roomMsg.type     = MessageType::JOIN;
+        roomMsg.roomId   = room.roomId;
+        roomMsg.text     = room.name;
+        roomMsg.role     = "GROUP";
+        roomMsg.mediaUrl = memberList;
         sender->send(roomMsg);
     }
 
@@ -127,6 +138,47 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
         m.timestamp       = f.uploadedAt;
         sender->send(m);
     }
+
+    // 1. Send all registered users and online users to the new client (populates their sidebar)
+    auto users = store_.getAllUsers();
+    for (auto& u : users) {
+        if (u.userId == sender->userId()) continue;
+        Message presence;
+        presence.type            = MessageType::PRESENCE;
+        presence.sender.userId   = u.userId;
+        presence.sender.username = u.username;
+        presence.displayName     = u.displayName;
+        presence.bio             = u.bio;
+        sender->send(presence);
+    }
+
+   if (server_) {
+        auto onlineUsers = server_->getOnlineUserIds();
+        for (auto& uid : onlineUsers) {
+            if (uid == sender->userId()) continue;
+            auto userOpt = store_.findUserById(uid);
+            if (!userOpt) continue;
+            bool away = server_->isUserAway(uid);
+            Message statusMsg;
+            statusMsg.type            = away ? MessageType::USER_AWAY : MessageType::USER_ONLINE;
+            statusMsg.sender.userId   = userOpt->userId;
+            statusMsg.sender.username = userOpt->username;
+            statusMsg.displayName     = userOpt->displayName;
+            sender->send(statusMsg);
+        }
+    }
+
+    // 2. Broadcast USER_ONLINE to everyone else (updates their sidebar dot)
+    Message online;
+    online.type            = MessageType::USER_ONLINE;
+    online.sender.userId   = userOpt->userId;
+    online.sender.username = userOpt->username;
+    online.displayName     = userOpt->displayName;
+    if (server_) server_->broadcast(online, sender);
+
+    // 3. Send new client their own USER_ONLINE so their dot shows green too
+    online.sender.userId = userOpt->userId;
+    sender->send(online);
 
 }
 

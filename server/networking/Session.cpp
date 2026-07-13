@@ -102,16 +102,16 @@ void Session::handle_error(const boost::system::error_code& ec)
     if (ec == boost::asio::error::eof ||
         ec == boost::asio::error::connection_reset)
     {
-        std::cout << "Client disconnected"
-                  << (userId_.empty() ? "" : " (user: " + userId_ + ")")
-                  << std::endl;
-    }
-    else
-    {
-        std::cerr << "Session error: " << ec.message() << std::endl;
+        std::cout << "Client disconnected\n";
+        // broadcast offline status
+        if (!userId_.empty()) {
+            Message offline;
+            offline.type          = MessageType::USER_OFFLINE;
+            offline.sender.userId = userId_;
+            server_.broadcast(offline, shared_from_this());
+        }
     }
 
-    // Clean up auth mapping so dead session isn't routed to
     if (!userId_.empty())
         server_.unregisterUser(userId_);
 }

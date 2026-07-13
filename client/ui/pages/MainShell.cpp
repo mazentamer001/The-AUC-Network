@@ -174,6 +174,29 @@ void MainShell::routeMessage(const Message& msg)
         break;
     }
 
+     
+    case MessageType::USER_ONLINE: {
+        QString uid = QString::fromStdString(msg.sender.userId);
+        chatPanel_->addOnlineUser(uid,
+            QString::fromStdString(msg.displayName),
+            QString::fromStdString(msg.sender.username),
+            QString::fromStdString(msg.bio));
+        chatPanel_->setUserStatus(uid, UserStatus::ONLINE);
+        break;
+    }
+    case MessageType::USER_AWAY: {
+        QString uid = QString::fromStdString(msg.sender.userId);
+        chatPanel_->setUserStatus(uid, UserStatus::AWAY);
+        break;
+    }
+    case MessageType::USER_OFFLINE: {
+        QString uid = QString::fromStdString(msg.sender.userId);
+        chatPanel_->setUserStatus(uid, UserStatus::OFFLINE);
+        break;
+    }
+ 
+
+
     case MessageType::MARKET_POST:
     case MessageType::MARKET_INQUIRY:
     case MessageType::MARKET_SEARCH:
@@ -230,4 +253,9 @@ void MainShell::log(const QString& text)
 {
     logView_->append(text);
     logView_->verticalScrollBar()->setValue(logView_->verticalScrollBar()->maximum());
+}
+
+void MainShell::setChatUserStatus(const QString& userId, UserStatus status)
+{
+    chatPanel_->setUserStatus(userId, status);
 }

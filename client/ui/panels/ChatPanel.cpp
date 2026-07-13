@@ -1,5 +1,6 @@
 #include "ChatPanel.h"
 #include "ui/theme/Theme.h"
+#include "CreateRoomDialog.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QListWidget>
@@ -9,6 +10,7 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QMessageBox>
+#include <QUuid>
 #include "ui/panels/UsersSidebar.h"
 
 ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
@@ -43,18 +45,12 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
         "QListWidget::item:hover:!selected { background: %3; }"
     ).arg(Theme::TEXT_PRIMARY, Theme::ACCENT, Theme::BORDER));
 
-    roomIdInput_ = new QLineEdit;
-    roomIdInput_->setPlaceholderText("Room name");
-    roomIdInput_->setFixedHeight(36);
-    roomIdInput_->setStyleSheet(Theme::textInput());
-
     auto* btnCreate = new QPushButton("Create room");
     btnCreate->setFixedHeight(36);
     btnCreate->setStyleSheet(Theme::primaryButton());
 
     sideLayout->addWidget(roomsLabel);
     sideLayout->addWidget(roomList_, 1);
-    sideLayout->addWidget(roomIdInput_);
     sideLayout->addWidget(btnCreate);
 
     // ── main chat area ───────────────────────────────────────────────────
@@ -123,16 +119,20 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     connect(btnCreate,     &QPushButton::clicked,     this, &ChatPanel::onCreateRoom);
 
     // clicking a room switches to it immediately, auto-joins if needed
-    connect(roomList_, &QListWidget::currentTextChanged, this, [this](const QString& room){
-        if (room.isEmpty()) return;
-        switchToRoom(room);
+    connect(roomList_, &QListWidget::currentItemChanged, this,
+            [this](QListWidgetItem* current, QListWidgetItem*){
+        if (!current) return;
+        QString roomId = current->data(Qt::UserRole).toString();
+        if (roomId.isEmpty()) return;
 
-        // if not yet joined, emit join signal
-        if (!joinedRooms_.contains(room)) {
+        switchToRoom(roomId);
+
+        if (!joinedRooms_.contains(roomId)) {
             Message msg;
             msg.type            = MessageType::JOIN;
-            msg.roomId          = room.toStdString();
+            msg.roomId          = roomId.toStdString();
             msg.sender.username = displayName_.toStdString();
+            msg.sender.userId   = userId_.toStdString();
             emit roomJoined(msg);
         }
     });
@@ -140,27 +140,54 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
 
 void ChatPanel::setCurrentUser(const QString& displayName, const QString& userId)
 {
-     displayName_ = displayName;
+    displayName_ = displayName;
     userId_      = userId;
 }
 
-// Get or create a QTextEdit for a room and switch chatStack_ to it
-void ChatPanel::switchToRoom(const QString& room)
+QListWidgetItem* ChatPanel::ensureRoomListItem(const QString& roomId, const QString& name)
 {
-    currentRoom_ = room;
-    currentRoomLabel_->setText(room);
+    roomNames_[roomId] = name;
 
-    if (!roomViews_.contains(room)) {
+    for (int i = 0; i < roomList_->count(); ++i) {
+        auto* item = roomList_->item(i);
+        if (item->data(Qt::UserRole).toString() == roomId) {
+            item->setText(name);
+            return item;
+        }
+    }
+    auto* item = new QListWidgetItem(name);
+    item->setData(Qt::UserRole, roomId);
+    roomList_->addItem(item);
+    return item;
+}
+
+void ChatPanel::applyMemberFilter(const QString& roomId)
+{
+    auto it = roomMeta_.find(roomId);
+    if (it == roomMeta_.end() || it->type == "PUBLIC" || it->type.isEmpty()) {
+        usersSidebar_->showAllUsers();
+    } else {
+        usersSidebar_->filterToUsers(QSet<QString>(it->members.begin(), it->members.end()));
+    }
+}
+
+void ChatPanel::switchToRoom(const QString& roomId)
+{
+    currentRoom_ = roomId;
+    currentRoomLabel_->setText(roomNames_.value(roomId, roomId));
+
+    if (!roomViews_.contains(roomId)) {
         auto* view = new QTextEdit;
         view->setReadOnly(true);
         view->setStyleSheet(QString(
             "QTextEdit { background: transparent; color: %1; border: none; padding: 16px 24px; font-size: 13px; line-height: 1.5; }"
         ).arg(Theme::TEXT_PRIMARY));
-        roomViews_[room] = view;
+        roomViews_[roomId] = view;
         chatStack_->addWidget(view);
     }
 
-    chatStack_->setCurrentWidget(roomViews_[room]);
+    chatStack_->setCurrentWidget(roomViews_[roomId]);
+    applyMemberFilter(roomId);
 }
 
 void ChatPanel::onSend()
@@ -179,7 +206,6 @@ void ChatPanel::onSend()
     msg.sender.username = displayName_.toStdString();
     msg.sender.userId   = userId_.toStdString();
 
-    // show our own message immediately without waiting for echo
     appendChat(currentRoom_, displayName_, text);
 
     emit messageSent(msg);
@@ -188,89 +214,116 @@ void ChatPanel::onSend()
 
 void ChatPanel::onCreateRoom()
 {
-    QString roomId = roomIdInput_->text().trimmed();
-    if (roomId.isEmpty()) {
-        QMessageBox::warning(this, "Room name required", "Please enter a room name.");
+    QMap<QString, QString> candidates = knownUsers_;
+    candidates.remove(userId_); // can't invite yourself, you're always a member
+
+    CreateRoomDialog dlg(candidates, this);
+    if (dlg.exec() != QDialog::Accepted)
         return;
-    }
 
-    // mark as joined locally before server responds
+    QString     roomName = dlg.roomName();
+    bool        priv      = dlg.isPrivate();
+    QStringList members   = dlg.selectedMemberIds();
+
+    QString roomId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+
+    // optimistic local state — don't wait for the server round-trip
     joinedRooms_.insert(roomId);
-    switchToRoom(roomId);
 
-    // add to sidebar
-    if (roomList_->findItems(roomId, Qt::MatchExactly).isEmpty())
-        roomList_->addItem(roomId);
-    roomList_->setCurrentRow(roomList_->row(
-        roomList_->findItems(roomId, Qt::MatchExactly).first()));
+    RoomMeta meta;
+    meta.type    = priv ? "GROUP" : "PUBLIC";
+    meta.members = members;
+    meta.members << userId_;
+    roomMeta_[roomId] = meta;
+
+    auto* item = ensureRoomListItem(roomId, roomName);
+    switchToRoom(roomId);
+    roomList_->setCurrentItem(item);
 
     Message msg;
-    msg.type            = MessageType::CHAT_CREATE;
-    msg.roomId          = roomId.toStdString();
-    msg.text            = roomId.toStdString();
-    msg.role            = "PUBLIC";
-    msg.sender.username = displayName_.toStdString();
+    msg.type             = MessageType::CHAT_CREATE;
+    msg.roomId           = roomId.toStdString();
+    msg.text             = roomName.toStdString();
+    msg.role              = priv ? "GROUP" : "PUBLIC";
+    msg.mediaUrl          = members.join(",").toStdString();
+    msg.sender.username   = displayName_.toStdString();
+    msg.sender.userId     = userId_.toStdString();
     emit roomCreated(msg);
-    roomIdInput_->clear();
 }
 
 void ChatPanel::receiveMessage(const Message& msg)
 {
-    QString room   = QString::fromStdString(msg.roomId);
-    QString sender = QString::fromStdString(msg.sender.username);
-    QString text   = QString::fromStdString(msg.text);
+    QString roomId   = QString::fromStdString(msg.roomId);
+    QString sender   = QString::fromStdString(msg.sender.username);
+    QString text     = QString::fromStdString(msg.text);
+    QString role     = QString::fromStdString(msg.role);
+    QString mediaUrl = QString::fromStdString(msg.mediaUrl);
 
     if (msg.type == MessageType::CHAT_CREATE) {
-        if (!room.isEmpty() && msg.role != "DIRECT" && roomList_->findItems(room, Qt::MatchExactly).isEmpty())
-            roomList_->addItem(room);
+        if (roomId.isEmpty() || role == "DIRECT") return;
+
+        RoomMeta meta;
+        meta.type = role.isEmpty() ? "PUBLIC" : role;
+        if (!mediaUrl.isEmpty())
+            meta.members = mediaUrl.split(',', Qt::SkipEmptyParts);
+        roomMeta_[roomId] = meta;
+
+        ensureRoomListItem(roomId, text.isEmpty() ? roomId : text);
+
+        if (roomId == currentRoom_)
+            applyMemberFilter(roomId);
         return;
     }
 
     if (msg.type == MessageType::JOIN) {
-        joinedRooms_.insert(room);
-        // add to sidebar if not there
-        if (!room.isEmpty() && roomList_->findItems(room, Qt::MatchExactly).isEmpty())
-            roomList_->addItem(room);
-        appendChat(room, "System", text);
+        joinedRooms_.insert(roomId);
+
+        RoomMeta meta = roomMeta_.value(roomId);
+        if (!role.isEmpty()) meta.type = role;
+        if (meta.type.isEmpty()) meta.type = "PUBLIC";
+        if (!mediaUrl.isEmpty())
+            meta.members = mediaUrl.split(',', Qt::SkipEmptyParts);
+        roomMeta_[roomId] = meta;
+
+        ensureRoomListItem(roomId, text.isEmpty() ? roomId : text);   // ← fixed
+        appendChat(roomId, "System", "joined " + (text.isEmpty() ? roomId : text));
+
+        if (roomId == currentRoom_)
+            applyMemberFilter(roomId);
         return;
     }
 
     if (msg.type == MessageType::LEAVE || msg.type == MessageType::PRESENCE) {
-        appendChat(room, "System", text);
+        appendChat(roomId, "System", text);
         return;
     }
 
-    // CHAT_PUBLIC / CHAT_PRIVATE
-    // don't echo back our own messages (we show them immediately in onSend)
+    // CHAT_PUBLIC / CHAT_PRIVATE — don't echo our own messages back
     if (sender == displayName_) return;
 
-    if (!room.isEmpty() && roomList_->findItems(room, Qt::MatchExactly).isEmpty())
-        roomList_->addItem(room);
-
-    appendChat(room, sender, text);
+    ensureRoomListItem(roomId, roomNames_.value(roomId, roomId));
+    appendChat(roomId, sender, text);
 }
 
-void ChatPanel::appendChat(const QString& room, const QString& sender, const QString& text)
+void ChatPanel::appendChat(const QString& roomId, const QString& sender, const QString& text)
 {
-    if (room.isEmpty()) return;
+    if (roomId.isEmpty()) return;
 
-    // ensure view exists
-    if (!roomViews_.contains(room)) {
+    if (!roomViews_.contains(roomId)) {
         auto* view = new QTextEdit;
         view->setReadOnly(true);
         view->setStyleSheet(QString(
             "QTextEdit { background: transparent; color: %1; border: none; padding: 16px 24px; font-size: 13px; line-height: 1.5; }"
         ).arg(Theme::TEXT_PRIMARY));
-        roomViews_[room] = view;
+        roomViews_[roomId] = view;
         chatStack_->addWidget(view);
     }
 
     bool isSystem = (sender == "System");
     bool isMe     = (sender == displayName_);
-
     QString color = isSystem ? Theme::TEXT_SECONDARY : isMe ? Theme::TEXT_PRIMARY : Theme::ACCENT;
 
-    auto* view = roomViews_[room];
+    auto* view = roomViews_[roomId];
     view->append(
         QString("<div style='margin-bottom: 10px;'>"
                 "<span style='color:%1; font-weight:600;'>%2</span>"
@@ -281,39 +334,54 @@ void ChatPanel::appendChat(const QString& room, const QString& sender, const QSt
 
     view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum());
 
-    // if this room is currently active, make sure stack shows it
-    if (room == currentRoom_)
+    if (roomId == currentRoom_)
         chatStack_->setCurrentWidget(view);
 }
 
 void ChatPanel::addOnlineUser(const QString& userId, const QString& displayName,
                                const QString& username, const QString& bio)
 {
+    knownUsers_[userId] = displayName;
     usersSidebar_->addUser(userId, displayName, username, bio);
 }
 
 void ChatPanel::removeOnlineUser(const QString& userId)
 {
+    knownUsers_.remove(userId);
     usersSidebar_->removeUser(userId);
 }
 
 void ChatPanel::openDirectRoom(const QString& roomId)
 {
-    if (roomList_->findItems(roomId, Qt::MatchExactly).isEmpty())
-        roomList_->addItem(roomId);
+    ensureRoomListItem(roomId, roomNames_.value(roomId, roomId));
+
+    RoomMeta meta = roomMeta_.value(roomId);
+    meta.type = "DIRECT";
+    if (meta.members.isEmpty() && roomId.startsWith("direct:")) {
+        QStringList parts = roomId.split(':');
+        if (parts.size() == 3)
+            meta.members << parts[1] << parts[2];
+    }
+    roomMeta_[roomId] = meta;
 
     joinedRooms_.insert(roomId);
     switchToRoom(roomId);
 
-    auto items = roomList_->findItems(roomId, Qt::MatchExactly);
-    if (!items.isEmpty())
-        roomList_->setCurrentItem(items.first());
+    for (int i = 0; i < roomList_->count(); ++i) {
+        if (roomList_->item(i)->data(Qt::UserRole).toString() == roomId) {
+            roomList_->setCurrentItem(roomList_->item(i));
+            break;
+        }
+    }
 }
-
 
 void ChatPanel::addKnownRoom(const QString& roomId)
 {
-    if (roomList_->findItems(roomId, Qt::MatchExactly).isEmpty())
-        roomList_->addItem(roomId);
+    ensureRoomListItem(roomId, roomNames_.value(roomId, roomId));
     joinedRooms_.insert(roomId);
+}
+
+void ChatPanel::setUserStatus(const QString& userId, UserStatus status)
+{
+    usersSidebar_->setUserStatus(userId, status);
 }

@@ -19,6 +19,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    bool eventFilter(QObject* obj, QEvent* event) override;
 
 private slots:
     void showHome();
@@ -27,6 +28,8 @@ private slots:
     void showShell();
     void onMessage(const Message& msg);
     void sendToServer(const Message& msg);
+    void onIdleTimeout();
+    void sendStatusUpdate(const QString& status);
 
 private:
     boost::asio::io_context* io_ = nullptr;
@@ -43,4 +46,8 @@ private:
     QString userId_;
     QString displayName_;
     QString username_;
+
+    QTimer* idleTimer_ = nullptr;
+    bool    isAway_    = false;
+
 };

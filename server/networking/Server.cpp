@@ -117,3 +117,26 @@ std::shared_ptr<Session> Server::findSessionByUserId(const std::string& userId)
     if (it == userMap_.end()) return nullptr;
     return it->second.lock();
 }
+
+std::vector<std::string> Server::getOnlineUserIds()
+{
+    std::lock_guard<std::mutex> lock(sessionsMutex_);
+    std::vector<std::string> result;
+    for (auto& [userId, weak] : userMap_)
+        if (!weak.expired())
+            result.push_back(userId);
+    return result;
+}
+
+void Server::setUserAway(const std::string& userId, bool away)
+{
+    std::lock_guard<std::mutex> lock(sessionsMutex_);
+    if (away) awayUsers_.insert(userId);
+    else      awayUsers_.erase(userId);
+}
+
+bool Server::isUserAway(const std::string& userId)
+{
+    std::lock_guard<std::mutex> lock(sessionsMutex_);
+    return awayUsers_.count(userId) > 0;
+}

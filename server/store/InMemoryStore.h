@@ -46,6 +46,7 @@ public:
                                               const ChatMessage& msg);
     std::vector<ChatMessage> getRoomHistory(const std::string& roomId);
     std::vector<ChatRoom>    getPublicRooms();
+    std::vector<ChatRoom>    getRoomsForUser(const std::string& userId); 
 
     // ── marketplace ───────────────────────────────────────────────────────
     bool                   addListing(const Listing& listing);

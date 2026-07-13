@@ -39,6 +39,7 @@ add_executable(TestGUI
     ui/panels/ForumPanel.cpp
     ui/panels/UsersSidebar.cpp 
     ui/panels/ProfilePanel.cpp
+    CreateRoomDialog.cpp
 )
 set_target_properties(TestGUI PROPERTIES AUTOMOC ON)
 
