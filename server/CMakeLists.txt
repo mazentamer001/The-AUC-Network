@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(Server LANGUAGES CXX)
 
-find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED)
 
 if(NOT TARGET Shared)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../shared ${CMAKE_CURRENT_BINARY_DIR}/shared)
@@ -31,4 +31,4 @@ target_include_directories(Server PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/models
 )
 
-target_link_libraries(Server PRIVATE Boost::system Shared)
+target_link_libraries(Server PRIVATE Shared)
