@@ -11,6 +11,7 @@
 #include "models/ForumPost.h"
 #include "models/FileRecord.h"
 #include "AuthToken.h"
+#include "models/Opportunity.h" 
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Database
@@ -60,6 +61,17 @@ public:
                                          const std::string& requestingUserId);
     bool                   markListingSold(const std::string& listingId);
 
+
+    // ── opportunities ─────────────────────────────────────────────────────
+    bool                       addOpportunity(const Opportunity& opp);
+    std::optional<Opportunity> findOpportunity(const std::string& opportunityId);
+    std::vector<Opportunity>   searchOpportunities(const std::string& query);
+    std::vector<Opportunity>   getOpportunitiesByUser(const std::string& userId);
+    bool                       deleteOpportunity(const std::string& opportunityId,
+                                                 const std::string& requestingUserId);
+    bool                       closeOpportunity(const std::string& opportunityId);
+
+
     // ── forum ─────────────────────────────────────────────────────────────
     bool                         addQuestion(const ForumQuestion& q);
     std::optional<ForumQuestion> findQuestion(const std::string& questionId);
@@ -89,6 +101,7 @@ private:
     AuthToken    rowToToken  (SQLite::Statement& q);
     ChatMessage  rowToMessage(SQLite::Statement& q);
     Listing      rowToListing(SQLite::Statement& q);
+    Opportunity  rowToOpportunity(SQLite::Statement& q);
 
     std::unique_ptr<SQLite::Database> db_;
     std::mutex                        mutex_;
@@ -120,6 +133,14 @@ private:
     std::vector<Listing> getListingsByUser_nolock(const std::string&);
     bool deleteListing_nolock(const std::string&, const std::string&);
     bool markListingSold_nolock(const std::string&);
+
+    // private _nolock declarations, next to the listing ones
+    bool addOpportunity_nolock(const Opportunity&);
+    std::optional<Opportunity> findOpportunity_nolock(const std::string&);
+    std::vector<Opportunity> searchOpportunities_nolock(const std::string&);
+    std::vector<Opportunity> getOpportunitiesByUser_nolock(const std::string&);
+    bool deleteOpportunity_nolock(const std::string&, const std::string&);
+    bool closeOpportunity_nolock(const std::string&);
 
     bool addQuestion_nolock(const ForumQuestion&);
     std::optional<ForumQuestion> findQuestion_nolock(const std::string&);

@@ -8,6 +8,7 @@
 #include "models/Listing.h"
 #include "models/ForumPost.h"
 #include "models/FileRecord.h"
+#include "models/Opportunity.h"
 #include "AuthToken.h"
 #include "store/Database.h"
 
@@ -79,6 +80,14 @@ public:
     std::vector<FileRecord>   getAllFiles();
     bool                      flagFile(const std::string& fileId,
                                        const std::string& reason);
+
+    bool                       addOpportunity(const Opportunity& opp);
+    std::optional<Opportunity> findOpportunity(const std::string& opportunityId);
+    std::vector<Opportunity>   searchOpportunities(const std::string& query);
+    std::vector<Opportunity>   getOpportunitiesByUser(const std::string& userId);
+    bool                       deleteOpportunity(const std::string& opportunityId,
+                                                 const std::string& requestingUserId);
+    bool                       closeOpportunity(const std::string& opportunityId);
 
 private:
     std::unique_ptr<Database> db_;

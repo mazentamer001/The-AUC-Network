@@ -9,6 +9,7 @@
 #include "services/MarketplaceService.h"
 #include "services/ForumService.h"
 #include "services/FileStorageService.h"
+#include "services/OpportunityService.h"
 #include <iostream>
 
 Dispatcher::Dispatcher(AuthService&         auth,
@@ -17,10 +18,12 @@ Dispatcher::Dispatcher(AuthService&         auth,
                        ChatService&         chat,
                        MarketplaceService&  marketplace,
                        ForumService&        forum,
-                       FileStorageService&  fileStorage)
+                       FileStorageService&  fileStorage,
+                       OpportunityService&  opportunity)
     : auth_(auth), registration_(registration), profile_(profile)
     , chat_(chat), marketplace_(marketplace)
     , forum_(forum), fileStorage_(fileStorage)
+    , opportunity_(opportunity)
 {}
 
 void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
@@ -79,6 +82,17 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
         marketplace_.handleSearch(msg, sender);    break;
     case MessageType::MARKET_INQUIRY:
         marketplace_.handleInquiry(msg, sender);   break;
+
+    
+    // ── opportunities ─────────────────────────────────────────────────────
+    case MessageType::OPP_POST:
+        opportunity_.handlePost(msg, sender);      break;
+    case MessageType::OPP_DELETE:
+        opportunity_.handleDelete(msg, sender);    break;
+    case MessageType::OPP_SEARCH:
+        opportunity_.handleSearch(msg, sender);    break;
+    case MessageType::OPP_INQUIRY:
+        opportunity_.handleInquiry(msg, sender);   break;
 
     // ── forum ─────────────────────────────────────────────────────────────
     case MessageType::QA_QUESTION:

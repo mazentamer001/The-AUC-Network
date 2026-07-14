@@ -11,6 +11,7 @@ class MarketplacePanel;
 class FilesPanel;
 class ForumPanel;
 class ProfilePanel;
+class OpportunitiesPanel; 
 
 class MainShell : public QWidget {
     Q_OBJECT
@@ -35,12 +36,14 @@ private:
     QTextEdit*         logView_;
     ChatPanel*         chatPanel_;
     MarketplacePanel*  marketPanel_;
+    OpportunitiesPanel* oppPanel_;      
     FilesPanel*        filesPanel_;
     ForumPanel*        forumPanel_;
     ProfilePanel*      profilePanel_;
 
     QToolButton* btnChat_;
     QToolButton* btnMarket_;
+    QToolButton* btnOpportunities_;     
     QToolButton* btnFiles_;
     QToolButton* btnForum_;
     QToolButton* btnProfile_;

@@ -9,6 +9,7 @@
 #include "services/ProfileService.h"
 #include "services/ChatService.h"
 #include "services/MarketplaceService.h"
+#include "services/OpportunityService.h"
 #include "services/ForumService.h"
 #include "services/FileStorageService.h"
 
@@ -26,12 +27,14 @@ int main()
         ProfileService      profile(db);
         ChatService         chat(db);
         MarketplaceService  marketplace(db);
+        OpportunityService  opportunity(db);
         ForumService        forum(db);
         FileStorageService  fileStorage(db);
 
         // ── dispatcher ────────────────────────────────────────────────────
         Dispatcher dispatcher(auth, registration, profile,
-                              chat, marketplace, forum, fileStorage);
+                              chat, marketplace, forum, fileStorage,
+                              opportunity);
 
         // ── server ────────────────────────────────────────────────────────
         Server server(io, 12345, dispatcher);
@@ -40,6 +43,7 @@ int main()
         auth.setServer(server);
         chat.setServer(server);
         marketplace.setServer(server);
+        opportunity.setServer(server);
         dispatcher.setServer(server);
 
         std::cout << "Server ready on port 12345\n";

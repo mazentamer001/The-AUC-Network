@@ -37,6 +37,7 @@ add_executable(Server
     services/MarketplaceService.cpp
     services/ForumService.cpp
     services/FileStorageService.cpp
+    services/OpportunityService.cpp
 )
 
 target_include_directories(Server PRIVATE

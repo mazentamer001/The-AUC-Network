@@ -53,3 +53,11 @@ bool InMemoryStore::addFile(const FileRecord& f)                              { 
 std::optional<FileRecord> InMemoryStore::findFile(const std::string& id)      { return db_->findFile(id); }
 std::vector<FileRecord> InMemoryStore::getAllFiles()                           { return db_->getAllFiles(); }
 bool InMemoryStore::flagFile(const std::string& id, const std::string& r)     { return db_->flagFile(id, r); }
+
+// ── opportunities ────────────────────────────────────────────────────────────
+bool InMemoryStore::addOpportunity(const Opportunity& o)                          { return db_->addOpportunity(o); }
+std::optional<Opportunity> InMemoryStore::findOpportunity(const std::string& id)  { return db_->findOpportunity(id); }
+std::vector<Opportunity> InMemoryStore::searchOpportunities(const std::string& q) { return db_->searchOpportunities(q); }
+std::vector<Opportunity> InMemoryStore::getOpportunitiesByUser(const std::string& id) { return db_->getOpportunitiesByUser(id); }
+bool InMemoryStore::deleteOpportunity(const std::string& o, const std::string& u) { return db_->deleteOpportunity(o, u); }
+bool InMemoryStore::closeOpportunity(const std::string& id)                       { return db_->closeOpportunity(id); }

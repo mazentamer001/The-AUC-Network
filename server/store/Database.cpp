@@ -131,6 +131,19 @@ void Database::createTables()
             flagReason      TEXT DEFAULT '',
             uploadedAt      TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS opportunities (
+            opportunityId   TEXT PRIMARY KEY,
+            posterUserId    TEXT NOT NULL,
+            posterUsername  TEXT NOT NULL,
+            title           TEXT NOT NULL,
+            description     TEXT DEFAULT '',
+            category        TEXT DEFAULT '',
+            location        TEXT DEFAULT '',
+            mediaUrl        TEXT DEFAULT '',
+            status          TEXT NOT NULL DEFAULT 'ACTIVE',
+            createdAt       TEXT NOT NULL
+        );
     )");
 }
 
@@ -194,6 +207,25 @@ Listing Database::rowToListing(SQLite::Statement& q)
              : ListingStatus::ACTIVE;
     l.createdAt = q.getColumn("createdAt").getText();
     return l;
+}
+
+Opportunity Database::rowToOpportunity(SQLite::Statement& q)
+{
+    Opportunity o;
+    o.opportunityId  = q.getColumn("opportunityId").getText();
+    o.posterUserId   = q.getColumn("posterUserId").getText();
+    o.posterUsername = q.getColumn("posterUsername").getText();
+    o.title          = q.getColumn("title").getText();
+    o.description    = q.getColumn("description").getText();
+    o.category       = q.getColumn("category").getText();
+    o.location       = q.getColumn("location").getText();
+    o.mediaUrl       = q.getColumn("mediaUrl").getText();
+    std::string st   = q.getColumn("status").getText();
+    o.status = (st == "CLOSED") ? OpportunityStatus::CLOSED
+             : (st == "DELETED") ? OpportunityStatus::DELETED
+             : OpportunityStatus::ACTIVE;
+    o.createdAt = q.getColumn("createdAt").getText();
+    return o;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -707,6 +739,119 @@ bool Database::markListingSold_nolock(const std::string& listingId)
     SQLite::Statement q(*db_,
         "UPDATE listings SET status='SOLD' WHERE listingId=?");
     q.bind(1, listingId);
+    q.exec();
+    return db_->getChanges() > 0;
+}
+
+
+
+bool Database::addOpportunity(const Opportunity& o)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return addOpportunity_nolock(o);
+}
+
+bool Database::addOpportunity_nolock(const Opportunity& o)
+{
+    try {
+        SQLite::Statement q(*db_,
+            "INSERT INTO opportunities "
+            "(opportunityId,posterUserId,posterUsername,title,description,category,location,mediaUrl,status,createdAt) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)");
+        q.bind(1, o.opportunityId);
+        q.bind(2, o.posterUserId);
+        q.bind(3, o.posterUsername);
+        q.bind(4, o.title);
+        q.bind(5, o.description);
+        q.bind(6, o.category);
+        q.bind(7, o.location);
+        q.bind(8, o.mediaUrl);
+        q.bind(9, "ACTIVE");
+        q.bind(10, o.createdAt);
+        q.exec();
+        return true;
+    } catch (const SQLite::Exception& e) {
+        std::cerr << "addOpportunity: " << e.what() << "\n";
+        return false;
+    }
+}
+
+std::optional<Opportunity> Database::findOpportunity(const std::string& opportunityId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return findOpportunity_nolock(opportunityId);
+}
+
+std::optional<Opportunity> Database::findOpportunity_nolock(const std::string& opportunityId)
+{
+    SQLite::Statement q(*db_, "SELECT * FROM opportunities WHERE opportunityId=?");
+    q.bind(1, opportunityId);
+    if (q.executeStep()) return rowToOpportunity(q);
+    return std::nullopt;
+}
+
+std::vector<Opportunity> Database::searchOpportunities(const std::string& query)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return searchOpportunities_nolock(query);
+}
+
+std::vector<Opportunity> Database::searchOpportunities_nolock(const std::string& query)
+{
+    std::vector<Opportunity> result;
+    SQLite::Statement q(*db_,
+        "SELECT * FROM opportunities WHERE status='ACTIVE' AND "
+        "(title LIKE ? OR description LIKE ? OR category LIKE ? OR location LIKE ?)");
+    std::string like = "%" + query + "%";
+    q.bind(1, like); q.bind(2, like); q.bind(3, like); q.bind(4, like);
+    while (q.executeStep()) result.push_back(rowToOpportunity(q));
+    return result;
+}
+
+std::vector<Opportunity> Database::getOpportunitiesByUser(const std::string& userId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return getOpportunitiesByUser_nolock(userId);
+}
+
+std::vector<Opportunity> Database::getOpportunitiesByUser_nolock(const std::string& userId)
+{
+    std::vector<Opportunity> result;
+    SQLite::Statement q(*db_,
+        "SELECT * FROM opportunities WHERE posterUserId=? AND status!='DELETED'");
+    q.bind(1, userId);
+    while (q.executeStep()) result.push_back(rowToOpportunity(q));
+    return result;
+}
+
+bool Database::deleteOpportunity(const std::string& opportunityId,
+                                  const std::string& requestingUserId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return deleteOpportunity_nolock(opportunityId, requestingUserId);
+}
+
+bool Database::deleteOpportunity_nolock(const std::string& opportunityId,
+                                         const std::string& requestingUserId)
+{
+    SQLite::Statement q(*db_,
+        "UPDATE opportunities SET status='DELETED' "
+        "WHERE opportunityId=? AND posterUserId=?");
+    q.bind(1, opportunityId); q.bind(2, requestingUserId);
+    q.exec();
+    return db_->getChanges() > 0;
+}
+
+bool Database::closeOpportunity(const std::string& opportunityId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return closeOpportunity_nolock(opportunityId);
+}
+
+bool Database::closeOpportunity_nolock(const std::string& opportunityId)
+{
+    SQLite::Statement q(*db_, "UPDATE opportunities SET status='CLOSED' WHERE opportunityId=?");
+    q.bind(1, opportunityId);
     q.exec();
     return db_->getChanges() > 0;
 }
