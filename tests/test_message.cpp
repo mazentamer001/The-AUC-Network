@@ -62,11 +62,11 @@ TEST(MessageTest, MissingFieldsBecomeEmpty)
 
     EXPECT_EQ(result.type, MessageType::CHAT_PUBLIC);
     EXPECT_EQ(result.text, "Hello");
-EXPECT_TRUE(result.roomId.isEmpty());
-EXPECT_TRUE(result.timestamp.isEmpty());
-EXPECT_TRUE(result.sender.userId.isEmpty());
-EXPECT_TRUE(result.sender.username.isEmpty());
-EXPECT_TRUE(result.sender.role.isEmpty());
+EXPECT_TRUE(result.roomId.empty());
+EXPECT_TRUE(result.timestamp.empty());
+EXPECT_TRUE(result.sender.userId.empty());
+EXPECT_TRUE(result.sender.username.empty());
+EXPECT_TRUE(result.sender.role.empty());
 }
 
 TEST(MessageTest, InvalidJsonThrowsException)
