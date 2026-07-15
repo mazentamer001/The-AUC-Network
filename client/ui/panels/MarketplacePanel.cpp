@@ -8,83 +8,9 @@
 #include <QTextEdit>
 #include <QPushButton>
 #include <QScrollArea>
-#include <QFrame>
 #include <QMouseEvent>
 #include <QMessageBox>
-#include <QDebug>
-
-// ── palette (matches HomePage's printed-label aesthetic) ───────────────────────
-static const char* BG_MAIN       = "#D4C5B6"; // Warm Sand/Beige
-static const char* BG_CARD       = "#CBBBA8"; // Slightly deeper sand for cards
-static const char* TEXT_MAIN     = "#0F0F0F"; // Ink Black
-static const char* TEXT_SEC      = "#5A4B3E"; // Muted brown-black
-static const char* ACCENT_ORANGE = "#E65C40"; // Stamp Red-Orange
-
-// ── divider helpers (kept local/static so they don't clash with HomePage.cpp) ──
-static QFrame* createHLineMP() {
-    QFrame* line = new QFrame;
-    line->setFrameShape(QFrame::HLine);
-    line->setFixedHeight(1);
-    line->setStyleSheet(QString("background-color: %1; border: none;").arg(TEXT_MAIN));
-    return line;
-}
-
-static QFrame* createVLineMP() {
-    QFrame* line = new QFrame;
-    line->setFrameShape(QFrame::VLine);
-    line->setFixedWidth(1);
-    line->setStyleSheet(QString("background-color: %1; border: none;").arg(TEXT_MAIN));
-    return line;
-}
-
-// ── shared style builders ───────────────────────────────────────────────────
-static QString labelHeaderStyle() {
-    return QString("color:%1;font-size:12px;font-weight:bold;letter-spacing:2px;").arg(TEXT_SEC);
-}
-
-static QString inputStyle() {
-    return QString("QLineEdit{background:transparent;color:%1;border:none;"
-        "border-bottom:1px solid %1;padding:8px 4px;font-size:14px;}"
-        "QLineEdit:focus{border-bottom:2px solid %2;}").arg(TEXT_MAIN, ACCENT_ORANGE);
-}
-
-static QString textEditStyle() {
-    return QString("QTextEdit{background:transparent;color:%1;border:1px solid %1;"
-        "padding:8px;font-size:13px;}"
-        "QTextEdit:focus{border:1px solid %2;}").arg(TEXT_MAIN, ACCENT_ORANGE);
-}
-
-// primary action: orange outline stamp, fills orange on hover (like GET STARTED)
-static QString primaryBtnStyle() {
-    return QString(
-        "QPushButton{background:transparent;color:%1;border:2px solid %1;"
-        "font-size:13px;font-weight:bold;letter-spacing:2px;padding:10px 20px;}"
-        "QPushButton:hover{background:%1;color:%2;}").arg(ACCENT_ORANGE, BG_MAIN);
-}
-
-// secondary action: black outline, fills black on hover (like SIGN IN)
-static QString secondaryBtnStyle() {
-    return QString(
-        "QPushButton{background:transparent;color:%1;border:1px solid %1;"
-        "font-size:12px;font-weight:bold;letter-spacing:2px;padding:8px 16px;}"
-        "QPushButton:hover{background:%1;color:%2;}").arg(TEXT_MAIN, BG_MAIN);
-}
-
-// flat text-only "back" link
-static QString linkBtnStyle() {
-    return QString("QPushButton{background:transparent;color:%1;border:none;"
-        "font-size:12px;font-weight:bold;letter-spacing:1px;}"
-        "QPushButton:hover{color:%2;}").arg(TEXT_SEC, TEXT_MAIN);
-}
-
-static QString msgBoxStyle() {
-    return QString("QMessageBox{background:%1;color:%2;}"
-        "QMessageBox QLabel{color:%2;font-size:13px;}"
-        "QMessageBox QPushButton{background:transparent;color:%3;border:1px solid %3;"
-        "padding:6px 18px;font-weight:bold;letter-spacing:1px;}"
-        "QMessageBox QPushButton:hover{background:%3;color:%1;}")
-        .arg(BG_MAIN, TEXT_MAIN, ACCENT_ORANGE);
-}
+#include "ui/theme/Theme.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ListingCard
@@ -94,46 +20,40 @@ ListingCard::ListingCard(const QString& id, const QString& title,
                          const QString& description, QWidget* parent)
     : QWidget(parent), id_(id)
 {
-    setFixedSize(240, 200);
+    setFixedSize(220, 190);
     setCursor(Qt::PointingHandCursor);
+    setAttribute(Qt::WA_StyledBackground, true);
     setStyleSheet(QString(
-        "QWidget{background:%1;border:1px solid %2;}"
-        "QWidget:hover{background:%3;border:1px solid %4;}")
-        .arg(BG_MAIN, TEXT_MAIN, BG_CARD, ACCENT_ORANGE));
+        "ListingCard { background: %1; border: 1px solid %2; border-radius: 12px; }"
+        "ListingCard:hover { border: 1px solid %3; }"
+    ).arg(Theme::SURFACE, Theme::BORDER, Theme::ACCENT));
 
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(16,16,16,16);
+    layout->setContentsMargins(16, 16, 16, 16);
     layout->setSpacing(6);
 
-    // image placeholder — bordered box, label-tag style
-    auto* imgPlaceholder = new QLabel("🖼");
-    imgPlaceholder->setAlignment(Qt::AlignCenter);
-    imgPlaceholder->setFixedHeight(72);
+    auto* imgPlaceholder = new QLabel;
+    imgPlaceholder->setFixedHeight(70);
     imgPlaceholder->setStyleSheet(QString(
-        "background:transparent;border:1px solid %1;font-size:28px;color:%1;").arg(TEXT_MAIN));
+        "background: %1; border-radius: 8px; border: none;"
+    ).arg(Theme::SURFACE_ALT));
 
-    auto* titleLbl = new QLabel(title.toUpper());
-    titleLbl->setStyleSheet(QString(
-        "color:%1;font-weight:bold;font-size:12px;letter-spacing:1px;").arg(TEXT_MAIN));
+    auto* titleLbl = new QLabel(title);
+    titleLbl->setStyleSheet(QString("border: none; background: transparent; color: %1; font-weight: 500; font-size: 13px;").arg(Theme::TEXT_PRIMARY));
     titleLbl->setWordWrap(true);
     titleLbl->setMaximumHeight(36);
 
     auto* priceLbl = new QLabel(price);
-    priceLbl->setStyleSheet(QString(
-        "color:%1;font-size:16px;font-weight:900;").arg(ACCENT_ORANGE));
+    priceLbl->setStyleSheet(QString("border: none; background: transparent; color: %1; font-size: 15px; font-weight: 600;").arg(Theme::ACCENT2));
 
-    auto* divider = createHLineMP();
-
-    auto* sellerLbl = new QLabel("BY " + seller.toUpper());
-    sellerLbl->setStyleSheet(QString(
-        "color:%1;font-size:10px;letter-spacing:1px;").arg(TEXT_SEC));
+    auto* sellerLbl = new QLabel("By " + seller);
+    sellerLbl->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
 
     layout->addWidget(imgPlaceholder);
     layout->addWidget(titleLbl);
     layout->addWidget(priceLbl);
-    layout->addWidget(divider);
-    layout->addWidget(sellerLbl);
     layout->addStretch();
+    layout->addWidget(sellerLbl);
 }
 
 void ListingCard::mousePressEvent(QMouseEvent*) { emit clicked(id_); }
@@ -144,72 +64,72 @@ void ListingCard::mousePressEvent(QMouseEvent*) { emit clicked(id_); }
 PostListingPanel::PostListingPanel(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(QString("PostListingPanel{background:%1;}").arg(BG_MAIN));
+    setStyleSheet(QString("PostListingPanel { %1 }").arg(Theme::pageBackground()));
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(50,50,50,50);
+    outer->setContentsMargins(50, 40, 50, 40);
     outer->setSpacing(0);
+    outer->setAlignment(Qt::AlignTop);
 
-    // header
-    auto* header = new QHBoxLayout;
-    auto* btnBack = new QPushButton("← BACK");
+    auto* btnBack = new QPushButton("Back to marketplace");
     btnBack->setFlat(true);
-    btnBack->setStyleSheet(linkBtnStyle());
-    header->addWidget(btnBack);
-    header->addStretch();
-    outer->addLayout(header);
+    btnBack->setStyleSheet(QString(
+        "QPushButton { background: transparent; color: %1; border: none; font-size: 12px; }"
+        "QPushButton:hover { color: %2; }"
+    ).arg(Theme::TEXT_SECONDARY, Theme::ACCENT));
+    outer->addWidget(btnBack, 0, Qt::AlignLeft);
     outer->addSpacing(16);
 
-    auto* titleLbl = new QLabel("POST A LISTING");
-    titleLbl->setStyleSheet(QString(
-        "color:%1;font-size:32px;font-weight:900;letter-spacing:4px;").arg(TEXT_MAIN));
+    auto* titleLbl = new QLabel("Post a listing");
+    titleLbl->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::heading()));
     outer->addWidget(titleLbl);
-    outer->addSpacing(20);
-    outer->addWidget(createHLineMP());
     outer->addSpacing(24);
 
-    // form card
     auto* card = new QWidget;
-    card->setMaximumWidth(600);
+    card->setObjectName("postCard");
+    card->setMaximumWidth(560);
+    card->setStyleSheet(QString("#postCard { %1 }").arg(Theme::card()));
     auto* form = new QVBoxLayout(card);
-    form->setContentsMargins(0,0,0,0);
-    form->setSpacing(16);
+    form->setContentsMargins(32, 32, 32, 32);
+    form->setSpacing(6);
 
     auto addLabel = [&](const QString& t){
         auto* l = new QLabel(t);
-        l->setStyleSheet(labelHeaderStyle());
+        l->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
         form->addWidget(l);
     };
 
-    addLabel("TITLE *");
+    addLabel("Title");
     title_ = new QLineEdit; title_->setPlaceholderText("What are you selling?");
-    title_->setStyleSheet(inputStyle()); title_->setFixedHeight(38);
+    title_->setStyleSheet(Theme::textInput()); title_->setFixedHeight(38);
     form->addWidget(title_);
+    form->addSpacing(10);
 
-    addLabel("PRICE *");
+    addLabel("Price");
     price_ = new QLineEdit; price_->setPlaceholderText("e.g. 150 EGP");
-    price_->setStyleSheet(inputStyle()); price_->setFixedHeight(38);
+    price_->setStyleSheet(Theme::textInput()); price_->setFixedHeight(38);
     form->addWidget(price_);
+    form->addSpacing(10);
 
-    addLabel("PHOTO URL");
+    addLabel("Photo URL");
     mediaUrl_ = new QLineEdit; mediaUrl_->setPlaceholderText("https://...");
-    mediaUrl_->setStyleSheet(inputStyle()); mediaUrl_->setFixedHeight(38);
+    mediaUrl_->setStyleSheet(Theme::textInput()); mediaUrl_->setFixedHeight(38);
     form->addWidget(mediaUrl_);
+    form->addSpacing(10);
 
-    addLabel("DESCRIPTION");
+    addLabel("Description");
     description_ = new QTextEdit;
     description_->setPlaceholderText("Describe your item...");
     description_->setFixedHeight(100);
-    description_->setStyleSheet(textEditStyle());
+    description_->setStyleSheet(Theme::textArea());
     form->addWidget(description_);
+    form->addSpacing(16);
 
-    form->addSpacing(12);
-    auto* btnSubmit = new QPushButton("POST LISTING");
-    btnSubmit->setFixedHeight(46);
-    btnSubmit->setStyleSheet(primaryBtnStyle());
+    auto* btnSubmit = new QPushButton("Post listing");
+    btnSubmit->setFixedHeight(42);
+    btnSubmit->setStyleSheet(Theme::primaryButton());
     form->addWidget(btnSubmit);
 
     outer->addWidget(card);
-    outer->addStretch();
 
     connect(btnSubmit, &QPushButton::clicked, this, &PostListingPanel::onSubmit);
     connect(btnBack,   &QPushButton::clicked, this, &PostListingPanel::cancelled);
@@ -218,10 +138,7 @@ PostListingPanel::PostListingPanel(QWidget* parent) : QWidget(parent)
 void PostListingPanel::onSubmit()
 {
     if (title_->text().trimmed().isEmpty() || price_->text().trimmed().isEmpty()) {
-        auto* box = new QMessageBox(this);
-        box->setStyleSheet(msgBoxStyle());
-        box->setText("Title and price are required.");
-        box->exec();
+        QMessageBox::warning(this, "Missing fields", "Title and price are required.");
         return;
     }
     Message msg;
@@ -233,7 +150,6 @@ void PostListingPanel::onSubmit()
     msg.sender.username = displayName_.toStdString();
     emit submitted(msg);
 
-    // clear form
     title_->clear(); price_->clear(); mediaUrl_->clear(); description_->clear();
 }
 
@@ -243,71 +159,63 @@ void PostListingPanel::onSubmit()
 ListingDetailPanel::ListingDetailPanel(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(QString("ListingDetailPanel{background:%1;}").arg(BG_MAIN));
+    setStyleSheet(QString("ListingDetailPanel { %1 }").arg(Theme::pageBackground()));
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(50,50,50,50);
+    outer->setContentsMargins(50, 40, 50, 40);
     outer->setSpacing(0);
+    outer->setAlignment(Qt::AlignTop);
 
-    auto* header = new QHBoxLayout;
-    auto* btnBack = new QPushButton("← BACK TO LISTINGS");
+    auto* btnBack = new QPushButton("Back to listings");
     btnBack->setFlat(true);
-    btnBack->setStyleSheet(linkBtnStyle());
-    header->addWidget(btnBack);
-    header->addStretch();
-    outer->addLayout(header);
-    outer->addSpacing(20);
-    outer->addWidget(createHLineMP());
+    btnBack->setStyleSheet(QString(
+        "QPushButton { background: transparent; color: %1; border: none; font-size: 12px; }"
+        "QPushButton:hover { color: %2; }"
+    ).arg(Theme::TEXT_SECONDARY, Theme::ACCENT));
+    outer->addWidget(btnBack, 0, Qt::AlignLeft);
     outer->addSpacing(24);
 
-    // detail card
     auto* card = new QWidget;
-    card->setMaximumWidth(700);
+    card->setObjectName("detailCard");
+    card->setMaximumWidth(640);
+    card->setStyleSheet(QString("#detailCard { %1 }").arg(Theme::card()));
     auto* layout = new QVBoxLayout(card);
-    layout->setContentsMargins(0,0,0,0);
-    layout->setSpacing(16);
+    layout->setContentsMargins(32, 32, 32, 32);
+    layout->setSpacing(10);
 
-    // image placeholder
-    auto* img = new QLabel("🖼");
-    img->setAlignment(Qt::AlignCenter);
-    img->setFixedHeight(180);
-    img->setStyleSheet(QString(
-        "background:transparent;border:1px solid %1;font-size:48px;color:%1;").arg(TEXT_MAIN));
+    auto* img = new QLabel;
+    img->setFixedHeight(160);
+    img->setStyleSheet(QString("background: %1; border-radius: 8px; border: none;").arg(Theme::SURFACE_ALT));
     layout->addWidget(img);
 
     title_ = new QLabel;
-    title_->setStyleSheet(QString(
-        "color:%1;font-size:26px;font-weight:900;letter-spacing:2px;").arg(TEXT_MAIN));
+    title_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::heading()));
     title_->setWordWrap(true);
 
     price_ = new QLabel;
-    price_->setStyleSheet(QString(
-        "color:%1;font-size:26px;font-weight:900;").arg(ACCENT_ORANGE));
+    price_->setStyleSheet(QString("border: none; background: transparent; color: %1; font-size: 20px; font-weight: 600;").arg(Theme::ACCENT2));
 
     seller_ = new QLabel;
-    seller_->setStyleSheet(QString(
-        "color:%1;font-size:12px;letter-spacing:1px;").arg(TEXT_SEC));
-
-    auto* divider = createHLineMP();
+    seller_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
 
     description_ = new QTextEdit;
     description_->setReadOnly(true);
     description_->setFixedHeight(120);
     description_->setStyleSheet(QString(
-        "QTextEdit{background:transparent;color:%1;border:none;font-size:13px;}").arg(TEXT_MAIN));
+        "QTextEdit { background: transparent; color: %1; border: none; font-size: 13px; }"
+    ).arg(Theme::TEXT_PRIMARY));
 
-    auto* btnInquire = new QPushButton("💬  CONTACT SELLER");
-    btnInquire->setFixedHeight(48);
-    btnInquire->setStyleSheet(primaryBtnStyle());
+    auto* btnInquire = new QPushButton("Contact seller");
+    btnInquire->setFixedHeight(44);
+    btnInquire->setStyleSheet(Theme::primaryButton());
 
     layout->addWidget(title_);
     layout->addWidget(price_);
     layout->addWidget(seller_);
-    layout->addWidget(divider);
+    layout->addSpacing(8);
     layout->addWidget(description_);
     layout->addWidget(btnInquire);
 
     outer->addWidget(card);
-    outer->addStretch();
 
     connect(btnBack, &QPushButton::clicked, this, &ListingDetailPanel::backClicked);
     connect(btnInquire, &QPushButton::clicked, this, [this](){
@@ -330,9 +238,9 @@ void ListingDetailPanel::show(const QString& id, const QString& title,
     currentTitle_    = title;
     currentPrice_    = price;
     currentSellerId_ = sellerId;
-    title_->setText(title.toUpper());
+    title_->setText(title);
     price_->setText(price);
-    seller_->setText("SOLD BY  " + seller.toUpper());
+    seller_->setText("Sold by " + seller);
     description_->setText(description.isEmpty() ? "No description provided." : description);
     QWidget::show();
 }
@@ -343,86 +251,71 @@ void ListingDetailPanel::show(const QString& id, const QString& title,
 MarketplacePanel::MarketplacePanel(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(QString("MarketplacePanel{background:%1;}").arg(BG_MAIN));
+    setStyleSheet(QString("MarketplacePanel { %1 }").arg(Theme::pageBackground()));
     auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(0,0,0,0);
+    root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
     stack_ = new QStackedWidget;
 
-    // ── browse page ───────────────────────────────────────────────────────
     auto* browsePage = new QWidget;
-    browsePage->setAttribute(Qt::WA_StyledBackground, true);
-    browsePage->setStyleSheet(QString("background:%1;").arg(BG_MAIN));
+    browsePage->setStyleSheet("background: transparent;");
     auto* browseLayout = new QVBoxLayout(browsePage);
-    browseLayout->setContentsMargins(50,40,50,40);
-    browseLayout->setSpacing(0);
+    browseLayout->setContentsMargins(40, 32, 40, 32);
+    browseLayout->setSpacing(16);
 
-    // branding, mirroring HomePage's logo treatment
-    auto* pageTitle = new QLabel("MARKETPLACE");
-    pageTitle->setStyleSheet(QString(
-        "color:%1;font-size:40px;font-weight:900;letter-spacing:6px;").arg(TEXT_MAIN));
+    auto* pageTitle = new QLabel("Marketplace");
+    pageTitle->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::heading()));
     browseLayout->addWidget(pageTitle);
-    browseLayout->addSpacing(16);
-    browseLayout->addWidget(createHLineMP());
-    browseLayout->addSpacing(20);
 
-    // top bar: search + post button
     auto* topBar = new QHBoxLayout;
     searchBar_ = new QLineEdit;
-    searchBar_->setPlaceholderText("SEARCH LISTINGS...");
+    searchBar_->setPlaceholderText("Search listings...");
     searchBar_->setFixedHeight(38);
-    searchBar_->setMaximumWidth(340);
-    searchBar_->setStyleSheet(inputStyle());
+    searchBar_->setMaximumWidth(300);
+    searchBar_->setStyleSheet(Theme::textInput());
 
-    auto* btnPost = new QPushButton("+ POST LISTING");
-    btnPost->setFixedHeight(40);
-    btnPost->setStyleSheet(secondaryBtnStyle());
+    auto* btnPost = new QPushButton("Post listing");
+    btnPost->setFixedHeight(38);
+    btnPost->setStyleSheet(Theme::primaryButton());
 
     topBar->addWidget(searchBar_);
     topBar->addStretch();
     topBar->addWidget(btnPost);
     browseLayout->addLayout(topBar);
-    browseLayout->addSpacing(20);
-    browseLayout->addWidget(createHLineMP());
-    browseLayout->addSpacing(20);
 
-    // scroll area for grid
     scrollArea_ = new QScrollArea;
     scrollArea_->setWidgetResizable(true);
     scrollArea_->setStyleSheet(QString(
-        "QScrollArea{border:none;background:transparent;}"
-        "QScrollBar:vertical{background:%1;width:6px;}"
-        "QScrollBar::handle:vertical{background:%2;}").arg(BG_CARD, TEXT_SEC));
+        "QScrollArea { border: none; background: transparent; }"
+        "QScrollBar:vertical { background: transparent; width: 6px; }"
+        "QScrollBar::handle:vertical { background: %1; border-radius: 3px; }"
+    ).arg(Theme::BORDER));
 
     gridWidget_ = new QWidget;
-    gridWidget_->setStyleSheet("background:transparent;");
+    gridWidget_->setStyleSheet("background: transparent;");
     grid_ = new QGridLayout(gridWidget_);
     grid_->setSpacing(16);
     grid_->setAlignment(Qt::AlignTop | Qt::AlignLeft);
     scrollArea_->setWidget(gridWidget_);
 
-    // empty state
-    auto* emptyLabel = new QLabel("NO LISTINGS YET.\nBE THE FIRST TO POST SOMETHING!");
+    auto* emptyLabel = new QLabel("No listings yet. Be the first to post something!");
     emptyLabel->setAlignment(Qt::AlignCenter);
-    emptyLabel->setStyleSheet(QString(
-        "color:%1;font-size:14px;font-weight:bold;letter-spacing:1px;").arg(TEXT_SEC));
+    emptyLabel->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
     grid_->addWidget(emptyLabel, 0, 0);
 
     browseLayout->addWidget(scrollArea_, 1);
 
-    // ── sub panels ────────────────────────────────────────────────────────
     postPanel_   = new PostListingPanel;
     detailPanel_ = new ListingDetailPanel;
 
-    stack_->addWidget(browsePage);   // 0
-    stack_->addWidget(postPanel_);   // 1
-    stack_->addWidget(detailPanel_); // 2
+    stack_->addWidget(browsePage);
+    stack_->addWidget(postPanel_);
+    stack_->addWidget(detailPanel_);
     stack_->setCurrentIndex(0);
 
     root->addWidget(stack_);
 
-    // ── connections ───────────────────────────────────────────────────────
     connect(btnPost,    &QPushButton::clicked,  this, &MarketplacePanel::showPostForm);
     connect(searchBar_, &QLineEdit::textChanged, this, &MarketplacePanel::onSearch);
 
@@ -432,12 +325,11 @@ MarketplacePanel::MarketplacePanel(QWidget* parent) : QWidget(parent)
     });
     connect(postPanel_, &PostListingPanel::cancelled, this, &MarketplacePanel::showBrowse);
 
-    connect(detailPanel_, &ListingDetailPanel::backClicked,     this, &MarketplacePanel::showBrowse);
+    connect(detailPanel_, &ListingDetailPanel::backClicked, this, &MarketplacePanel::showBrowse);
     connect(detailPanel_, &ListingDetailPanel::inquiryClicked, this, [this](const Message& msg){
-        emit sendMessage(msg);   //send and wait for server response
+        emit sendMessage(msg);
     });
 
-    // request listings on load
     QTimer::singleShot(500, this, [this](){
         if (!token_.isEmpty()) {
             Message msg;
@@ -471,8 +363,6 @@ void MarketplacePanel::onCardClicked(const QString& id)
 void MarketplacePanel::onSearch()
 {
     QString query = searchBar_->text().trimmed().toLower();
-    // filter locally
-    int col = 0, row = 0;
     clearGrid();
     for (auto& l : listings_) {
         if (query.isEmpty() || l.title.toLower().contains(query) ||
@@ -506,11 +396,6 @@ void MarketplacePanel::receiveMessage(const Message& msg)
 {
     if (msg.type == MessageType::MARKET_POST)
     {
-        qDebug() << "Market msg type:" << QString::fromStdString(Message::typeToString(msg.type));
-        qDebug() << "id:" << QString::fromStdString(msg.parentId);
-        qDebug() << "title:" << QString::fromStdString(msg.title);
-        qDebug() << "price:" << QString::fromStdString(msg.price);
-        // could be a search result or a new listing confirmation
         QString id     = QString::fromStdString(msg.parentId);
         QString title  = QString::fromStdString(msg.title);
         QString price  = QString::fromStdString(msg.price);
@@ -518,17 +403,14 @@ void MarketplacePanel::receiveMessage(const Message& msg)
         QString selId  = QString::fromStdString(msg.sender.userId);
         QString desc   = QString::fromStdString(msg.text);
 
-        if (id.isEmpty() || title.isEmpty()) return; // just a text response
+        if (id.isEmpty() || title.isEmpty()) return;
 
-        // store locally
         listings_[id] = {id, title, price, seller, selId, desc};
 
-        // add to grid if not already there
         auto existing = gridWidget_->findChildren<ListingCard*>();
         for (auto* c : existing)
-            if (c->listingId() == id) return; // already shown
+            if (c->listingId() == id) return;
 
-        // remove empty state label if present
         if (grid_->count() == 1) {
             auto* item = grid_->itemAt(0);
             if (item && qobject_cast<QLabel*>(item->widget())) {
@@ -540,15 +422,8 @@ void MarketplacePanel::receiveMessage(const Message& msg)
     }
 
     if (msg.type == MessageType::MARKET_INQUIRY) {
-
-         QString roomId = QString::fromStdString(msg.roomId);
-        // buyer: confirm sent
-        auto* box = new QMessageBox(this);
-        box->setStyleSheet(msgBoxStyle());
-        box->setWindowTitle("Inquiry Sent");
-        box->setText(QString::fromStdString(msg.text));
-        box->exec();
-
+        QString roomId = QString::fromStdString(msg.roomId);
+        QMessageBox::information(this, "Inquiry sent", QString::fromStdString(msg.text));
         if (!roomId.isEmpty())
             emit openRoom(roomId);
     }
@@ -561,4 +436,4 @@ void MarketplacePanel::receiveMessage(const Message& msg)
         for (auto* c : existing)
             if (c->listingId() == id) { c->deleteLater(); break; }
     }
-}   
+}

@@ -10,7 +10,7 @@
 #include <sstream>
 
 //give access to database
-ChatService::ChatService(InMemoryStore& store) : store_(store){}
+ChatService::ChatService(InMemoryStore& store, AIService& ai) : store_(store), ai_(ai) {}
 
 //creates a new room
 void ChatService::handleCreate(const Message& msg, std::shared_ptr<Session> sender)
@@ -24,12 +24,10 @@ void ChatService::handleCreate(const Message& msg, std::shared_ptr<Session> send
     room.creatorId = sender->userId();
     room.createdAt = currentTimestamp();
 
-    //type comes from msg.role field: "PUBLIC", "GROUP", "DIRECT"
     if (msg.role == "GROUP")  room.type = RoomType::GROUP;
     else if (msg.role == "DIRECT") room.type = RoomType::DIRECT;
     else room.type = RoomType::PUBLIC;
 
-    //creator is always a member
     room.memberIds.push_back(sender->userId());
 
     if (!store_.createRoom(room))
@@ -45,13 +43,12 @@ void ChatService::handleCreate(const Message& msg, std::shared_ptr<Session> send
     notif.sender.username = msg.sender.username;
     if (server_) server_->broadcast(notif, sender);
 
-    sendOk("Room '" + room.name + "' created", sender); //tell the client the room is created successfully
+    sendOk("Room '" + room.name + "' created", sender);
 }
 
 //join a room
 void ChatService::handleJoin(const Message& msg, std::shared_ptr<Session> sender)
 {
-    //input validation
     if (msg.roomId.empty())
     { sendError("roomId is required", sender); return; }
 
@@ -59,13 +56,11 @@ void ChatService::handleJoin(const Message& msg, std::shared_ptr<Session> sender
     if (!roomOpt)
     { sendError("Room not found", sender); return; }
 
-    //DIRECT rooms are 1-on-1 so you can't freely join
     if (roomOpt->type == RoomType::DIRECT)
     { sendError("Cannot join a direct message room", sender); return; }
 
-    store_.addMemberToRoom(msg.roomId, sender->userId());   //add user to room
+    store_.addMemberToRoom(msg.roomId, sender->userId());
 
-    //notify room that someone joined
     Message notif;
     notif.type = MessageType::JOIN;
     notif.roomId = msg.roomId;
@@ -75,7 +70,7 @@ void ChatService::handleJoin(const Message& msg, std::shared_ptr<Session> sender
     notif.timestamp = currentTimestamp();
     if(server_) server_->sendToRoom(msg.roomId, notif, nullptr);
 
-    sendOk("Joined room " + msg.roomId, sender);    //tell client that connection was successfull
+    sendOk("Joined room " + msg.roomId, sender);
 }
 
 //leave a room NOTE: this doesnt make the user actually leave, it only notifies the room, this will be implemented later on
@@ -84,7 +79,6 @@ void ChatService::handleLeave(const Message& msg, std::shared_ptr<Session> sende
     if (msg.roomId.empty())
     { sendError("roomId is required", sender); return; }
 
-    //notify room that someone left
     Message notif;
     notif.type = MessageType::LEAVE;
     notif.roomId = msg.roomId;
@@ -94,7 +88,7 @@ void ChatService::handleLeave(const Message& msg, std::shared_ptr<Session> sende
     notif.timestamp = currentTimestamp();
     if(server_) server_->sendToRoom(msg.roomId, notif, sender);
 
-    sendOk("Left room " + msg.roomId, sender);  //tell client that the action was successfull
+    sendOk("Left room " + msg.roomId, sender);
 }
 
 //send a message to a room
@@ -110,12 +104,10 @@ void ChatService::handlePublic(const Message& msg, std::shared_ptr<Session> send
     if (!store_.isMember(msg.roomId, sender->userId()))
     { sendError("You are not a member of this room", sender); return; }
 
-    //stamp timestamp server side
     Message out    = msg;
     out.timestamp  = currentTimestamp();
     out.sender.userId = sender->userId();
 
-    //create message and save to history
     ChatMessage cm;
     cm.messageId = generateId();
     cm.roomId = msg.roomId;
@@ -126,7 +118,6 @@ void ChatService::handlePublic(const Message& msg, std::shared_ptr<Session> send
     cm.timestamp = out.timestamp;
     store_.addMessageToRoom(msg.roomId, cm);
 
-    //broadcast to room, every member of room recieves the message
     if(server_) server_->sendToRoom(msg.roomId, out, nullptr);
 }
 
@@ -136,14 +127,11 @@ void ChatService::handlePrivate(const Message& msg, std::shared_ptr<Session> sen
     if (msg.recipientId.empty() || msg.text.empty())
     { sendError("recipientId and text are required", sender); return; }
 
-    //build or find the direct room between these two users
-    //roomID is direct + sorted userIds joined by ':' to prevent 2 different direct message rooms between the same 2 from happening ("Alice:Bob, Bob:Alice")
     std::string uid1 = sender->userId();
     std::string uid2 = msg.recipientId;
     if (uid1 > uid2) std::swap(uid1, uid2);
     std::string directRoomId = "direct:" + uid1 + ":" + uid2;
 
-    //create the direct room if it doesn't exist
     if (!store_.findRoom(directRoomId))
     {
         ChatRoom room;
@@ -156,7 +144,6 @@ void ChatService::handlePrivate(const Message& msg, std::shared_ptr<Session> sen
         store_.createRoom(room);
     }
 
-    //save message
     Message out       = msg;
     out.roomId        = directRoomId;
     out.timestamp     = currentTimestamp();
@@ -171,7 +158,6 @@ void ChatService::handlePrivate(const Message& msg, std::shared_ptr<Session> sen
     cm.timestamp      = out.timestamp;
     store_.addMessageToRoom(directRoomId, cm);
 
-    //send to recipient and echo back to sender to dispay the message on both ends
     if(server_) server_->sendTo(msg.recipientId, out);
     sender->send(out);
 }
@@ -185,8 +171,8 @@ void ChatService::handleHistory(const Message& msg, std::shared_ptr<Session> sen
     if (!store_.isMember(msg.roomId, sender->userId()))
     { sendError("You are not a member of this room", sender); return; }
 
-    auto history = store_.getRoomHistory(msg.roomId);   //retrieve room history
-    for (auto& cm : history)    //loop and send to client (the client rebuilds the chat window from these messages)
+    auto history = store_.getRoomHistory(msg.roomId);
+    for (auto& cm : history)
     {
         Message out;
         out.type            = MessageType::CHAT_PUBLIC;
@@ -198,6 +184,32 @@ void ChatService::handleHistory(const Message& msg, std::shared_ptr<Session> sen
         out.timestamp       = cm.timestamp;
         sender->send(out);
     }
+}
+
+//summarizes recent messages in a room using AI
+void ChatService::handleSummarize(const Message& msg, std::shared_ptr<Session> sender)
+{
+    if (msg.roomId.empty())
+    { sendError("roomId is required", sender); return; }
+
+    if (!store_.isMember(msg.roomId, sender->userId()))
+    { sendError("You are not a member of this room", sender); return; }
+
+    auto history = store_.getRoomHistory(msg.roomId);
+
+    std::vector<std::string> texts;
+    for (auto& cm : history)
+        texts.push_back(cm.senderUsername + ": " + cm.text);
+
+    std::string summary = ai_.summarizeChat(texts);
+
+    Message out;
+    out.type            = MessageType::CHAT_SUMMARIZE;
+    out.roomId          = msg.roomId;
+    out.text            = summary;
+    out.sender.username = "AI Assistant";
+    out.timestamp        = currentTimestamp();
+    sender->send(out);
 }
 
 //generates a random message ID

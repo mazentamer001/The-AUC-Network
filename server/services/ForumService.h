@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include "Message.h"
+#include "services/AIService.h"
 
 class Session;
 class InMemoryStore;
@@ -8,7 +9,7 @@ class Server;
 
 class ForumService {
 public:
-    explicit ForumService(InMemoryStore& store);
+    ForumService(InMemoryStore& store, AIService& ai);
 
     void handleQuestion(const Message& msg, std::shared_ptr<Session> sender); // post question
     void handleAnswer (const Message& msg, std::shared_ptr<Session> sender); // post answer
@@ -25,5 +26,6 @@ private:
     void sendOk (const std::string& text, std::shared_ptr<Session> sender);
 
     InMemoryStore& store_;
+    AIService& ai_;
     Server* server_ = nullptr;
 };

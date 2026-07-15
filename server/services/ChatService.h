@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include "Message.h"
+#include "services/AIService.h"
 
 class Session;
 class Server;
@@ -8,7 +9,7 @@ class InMemoryStore;
 
 class ChatService {
 public:
-    ChatService(InMemoryStore& store);
+    ChatService(InMemoryStore& store, AIService& ai);
     void setServer(Server& server) { server_ = &server; }
 
     void handlePublic (const Message& msg, std::shared_ptr<Session> sender);
@@ -17,6 +18,7 @@ public:
     void handleLeave  (const Message& msg, std::shared_ptr<Session> sender);
     void handleCreate (const Message& msg, std::shared_ptr<Session> sender);
     void handleHistory(const Message& msg, std::shared_ptr<Session> sender);
+    void handleSummarize(const Message& msg, std::shared_ptr<Session> sender);
 
 private:
     std::string generateId();
@@ -26,4 +28,5 @@ private:
 
     Server*server_ = nullptr;
     InMemoryStore& store_;
+    AIService& ai_;
 };

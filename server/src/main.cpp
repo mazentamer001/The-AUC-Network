@@ -11,6 +11,7 @@
 #include "services/MarketplaceService.h"
 #include "services/ForumService.h"
 #include "services/FileStorageService.h"
+#include "services/AIService.h"
 
 int main()
 {
@@ -19,13 +20,14 @@ int main()
         boost::asio::io_context io;
 
         InMemoryStore store;
+        AIService ai;
 
         AuthService         auth(store);
         RegistrationService registration(store);
         ProfileService      profile(store);
-        ChatService         chat(store);
+        ChatService         chat(store, ai);
         MarketplaceService  marketplace(store);
-        ForumService        forum(store);
+        ForumService        forum(store, ai);
         FileStorageService  fileStorage(store);
 
         Dispatcher dispatcher(auth, registration, profile,

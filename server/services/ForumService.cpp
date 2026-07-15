@@ -9,15 +9,14 @@
 #include <random>
 #include <sstream>
 
-ForumService::ForumService(InMemoryStore& store) : store_(store) {}
+ForumService::ForumService(InMemoryStore& store, AIService& ai) : store_(store), ai_(ai) {}
 
-//post a question
 void ForumService::handleQuestion(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.title.empty() || msg.text.empty())
     { sendError("title and text are required", sender); return; }
 
-    ForumQuestion q;            //create a forum post
+    ForumQuestion q;
     q.questionId = generateId();
     q.authorUserId = sender->userId();
     q.authorUsername = msg.sender.username;
@@ -25,24 +24,44 @@ void ForumService::handleQuestion(const Message& msg, std::shared_ptr<Session> s
     q.text = msg.text;
     q.timestamp = currentTimestamp();
 
-    if (!store_.addQuestion(q))     //store it
+    if (!store_.addQuestion(q))
     { sendError("Failed to post question", sender); return; }
 
     std::cout << "Forum question posted: " << q.title << "\n";
 
-    Message resp;       //create message
+    Message resp;
     resp.type = MessageType::QA_QUESTION;
     resp.parentId = q.questionId;
     resp.title = q.title;
     resp.text = q.text;
     resp.sender.username = q.authorUsername;
     resp.timestamp = q.timestamp;
-    sender->send(resp);     //send confirmation message to client
-    if (server_) server_->broadcast(resp, sender);  //broadcast
+    sender->send(resp);
+    if (server_) server_->broadcast(resp, sender);
+
+    // ── AI-suggested answer, posted automatically ──────────────────────────
+    ForumAnswer aiAnswer;
+    aiAnswer.answerId = generateId();
+    aiAnswer.questionId = q.questionId;
+    aiAnswer.authorUserId = "ai-assistant";
+    aiAnswer.authorUsername = "AI Assistant";
+    aiAnswer.text = ai_.suggestForumAnswer(q.title, q.text);
+    aiAnswer.isFaq = false;
+    aiAnswer.timestamp = currentTimestamp();
+
+    if (store_.addAnswer(q.questionId, aiAnswer))
+    {
+        Message aiResp;
+        aiResp.type = MessageType::QA_ANSWER;
+        aiResp.parentId = aiAnswer.questionId;
+        aiResp.filename = aiAnswer.answerId;
+        aiResp.text = aiAnswer.text;
+        aiResp.sender.username = aiAnswer.authorUsername;
+        aiResp.timestamp = aiAnswer.timestamp;
+        if (server_) server_->broadcast(aiResp, nullptr);
+    }
 }
 
-//post an answer
-//parentId = questionId being answered
 void ForumService::handleAnswer(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.parentId.empty() || msg.text.empty())
@@ -75,7 +94,6 @@ void ForumService::handleAnswer(const Message& msg, std::shared_ptr<Session> sen
     if (server_) server_->broadcast(resp, sender);
 }
 
-// mark own answer as FAQ will be changed later perhaps
 void ForumService::handleFaq(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.parentId.empty() || msg.filename.empty())
@@ -87,7 +105,6 @@ void ForumService::handleFaq(const Message& msg, std::shared_ptr<Session> sender
     sendOk("Answer marked as FAQ", sender);
 }
 
-//get all questions (list view)
 void ForumService::handleGetAll(const Message& msg, std::shared_ptr<Session> sender)
 {
     auto questions = store_.getAllQuestions();
@@ -109,7 +126,6 @@ void ForumService::handleGetAll(const Message& msg, std::shared_ptr<Session> sen
         sendOk("No questions yet", sender);
 }
 
-//get one question with all its answers
 void ForumService::handleGetOne(const Message& msg, std::shared_ptr<Session> sender)
 {
     if (msg.parentId.empty())
@@ -119,7 +135,6 @@ void ForumService::handleGetOne(const Message& msg, std::shared_ptr<Session> sen
     if (!qOpt)
     { sendError("Question not found", sender); return; }
 
-    //send the question first
     Message qResp;
     qResp.type = MessageType::QA_QUESTION;
     qResp.parentId = qOpt->questionId;
@@ -130,7 +145,6 @@ void ForumService::handleGetOne(const Message& msg, std::shared_ptr<Session> sen
     qResp.timestamp = qOpt->timestamp;
     sender->send(qResp);
 
-    //then send each answer
     for (auto& a : qOpt->answers)
     {
         Message aResp;
@@ -141,24 +155,22 @@ void ForumService::handleGetOne(const Message& msg, std::shared_ptr<Session> sen
         aResp.sender.userId = a.authorUserId;
         aResp.sender.username = a.authorUsername;
         aResp.timestamp = a.timestamp;
-        aResp.role = a.isFaq ? "FAQ" : "";  //flag FAQ answers, could be changed later when we change FAQ
+        aResp.role = a.isFaq ? "FAQ" : "";
         sender->send(aResp);
     }
 }
 
-
 void ForumService::handleVote(const Message& msg, std::shared_ptr<Session> sender)
 {
-    if (msg.parentId.empty()) { sendError("parentId required", sender); return; }     //we need parentID the server doesnt know what to vote on
+    if (msg.parentId.empty()) { sendError("parentId required", sender); return; }
 
-    //use the session's authenticated userId — don't trust client-supplied userId as if we use the one provided by message it could be abused by a malicious user by providing role = admin or smthn
     const std::string& userId = sender->userId();
     if (userId.empty()) { sendError("Not authenticated", sender); return; }
 
     bool upvote = (msg.role == "UP");
     bool success = false;
 
-    if (msg.filename.empty()) {  //filename is used to store answerID so if its empty then we are upvoting/downvoting a question
+    if (msg.filename.empty()) {
         success = store_.voteQuestion(msg.parentId, userId, upvote);
         if (!success) { sendError("Already voted on this question", sender); return; }
     } else {
@@ -166,7 +178,6 @@ void ForumService::handleVote(const Message& msg, std::shared_ptr<Session> sende
         if (!success) { sendError("Already voted on this answer", sender); return; }
     }
 
-    //send back updated counts
     auto qOpt = store_.findQuestion(msg.parentId);
     if (!qOpt) return;
 
@@ -194,7 +205,6 @@ void ForumService::handleVote(const Message& msg, std::shared_ptr<Session> sende
         }
     }
 }
-
 
 std::string ForumService::generateId()
 {
@@ -226,4 +236,3 @@ void ForumService::sendOk(const std::string& text, std::shared_ptr<Session> send
     Message m; m.type = MessageType::QA_FAQ; m.text = text;
     sender->send(m);
 }
-

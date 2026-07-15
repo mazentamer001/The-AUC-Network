@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(Server LANGUAGES CXX)
 
 find_package(Boost REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 if(NOT TARGET Shared)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../shared ${CMAKE_CURRENT_BINARY_DIR}/shared)
@@ -18,8 +19,10 @@ add_executable(Server
     services/ChatService.cpp
     services/MarketplaceService.cpp
     services/ForumService.cpp
+    services/AIService.cpp
     services/FileStorageService.cpp
     store/InMemoryStore.cpp
+    store/Database.cpp
 )
 
 target_include_directories(Server PRIVATE
@@ -31,4 +34,4 @@ target_include_directories(Server PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/models
 )
 
-target_link_libraries(Server PRIVATE Shared)
+target_link_libraries(Server PRIVATE Shared SQLite3::SQLite3)
