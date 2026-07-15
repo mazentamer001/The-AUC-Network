@@ -8,6 +8,7 @@
 #include "models/UserRecord.h"
 #include "models/ChatRoom.h"
 #include "models/Listing.h"
+#include "models/Opportunity.h"
 #include "models/ForumPost.h"
 #include "models/FileRecord.h"
 #include "AuthToken.h"
@@ -49,6 +50,14 @@ public:
     bool deleteListing(const std::string& listingId, const std::string& requestingUserId);
     bool markListingSold(const std::string& listingId);
 
+    // opportunities
+    bool addOpportunity(const Opportunity& opp);
+    std::optional<Opportunity> findOpportunity(const std::string& opportunityId);
+    std::vector<Opportunity> searchOpportunities(const std::string& query);
+    std::vector<Opportunity> getOpportunitiesByUser(const std::string& userId);
+    bool deleteOpportunity(const std::string& opportunityId, const std::string& requestingUserId);
+    bool markOpportunityClosed(const std::string& opportunityId);
+
     // ── forum ─────────────────────────────────────────────────────────────
     bool addQuestion(const ForumQuestion& q);
     std::optional<ForumQuestion> findQuestion(const std::string& questionId);
@@ -77,6 +86,9 @@ private:
 
     //marketplace
     std::unordered_map<std::string, Listing> listings_;
+
+    //opportunities
+    std::unordered_map<std::string, Opportunity> opportunities_;
 
     //forum
     std::unordered_map<std::string, ForumQuestion> questions_;

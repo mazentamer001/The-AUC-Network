@@ -192,6 +192,69 @@ bool InMemoryStore::markListingSold(const std::string& listingId)
     return true;
 }
 
+//opportunities
+bool InMemoryStore::addOpportunity(const Opportunity& opp)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (opportunities_.count(opp.opportunityId)) return false;
+    opportunities_[opp.opportunityId] = opp;
+    return true;
+}
+
+std::optional<Opportunity> InMemoryStore::findOpportunity(const std::string& opportunityId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = opportunities_.find(opportunityId);
+    if (it == opportunities_.end()) return std::nullopt;
+    return it->second;
+}
+
+std::vector<Opportunity> InMemoryStore::searchOpportunities(const std::string& query)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<Opportunity> result;
+    std::string q = query;
+    std::transform(q.begin(), q.end(), q.begin(), ::tolower);
+    for (auto& [id, opp] : opportunities_)
+    {
+        if (opp.status != OpportunityStatus::OPEN) continue;
+        std::string title = opp.title;
+        std::transform(title.begin(), title.end(), title.begin(), ::tolower);
+        if (q.empty() || title.find(q) != std::string::npos)
+            result.push_back(opp);
+    }
+    return result;
+}
+
+std::vector<Opportunity> InMemoryStore::getOpportunitiesByUser(const std::string& userId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<Opportunity> result;
+    for (auto& [id, opp] : opportunities_)
+        if (opp.posterUserId == userId && opp.status != OpportunityStatus::DELETED)
+            result.push_back(opp);
+    return result;
+}
+
+bool InMemoryStore::deleteOpportunity(const std::string& opportunityId, const std::string& requestingUserId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = opportunities_.find(opportunityId);
+    if (it == opportunities_.end()) return false;
+    if (it->second.posterUserId != requestingUserId) return false;
+    it->second.status = OpportunityStatus::DELETED;
+    return true;
+}
+
+bool InMemoryStore::markOpportunityClosed(const std::string& opportunityId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = opportunities_.find(opportunityId);
+    if (it == opportunities_.end()) return false;
+    it->second.status = OpportunityStatus::CLOSED;
+    return true;
+}
+
 //forum
 bool InMemoryStore::addQuestion(const ForumQuestion& q)
 {
