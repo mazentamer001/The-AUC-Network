@@ -7,6 +7,7 @@
 #include "services/ProfileService.h"
 #include "services/ChatService.h"
 #include "services/MarketplaceService.h"
+#include "services/OpportunityService.h"
 #include "services/ForumService.h"
 #include "services/FileStorageService.h"
 #include <iostream>
@@ -16,10 +17,11 @@ Dispatcher::Dispatcher(AuthService&         auth,
                        ProfileService&      profile,
                        ChatService&         chat,
                        MarketplaceService&  marketplace,
+                       OpportunityService&  opportunities,
                        ForumService&        forum,
                        FileStorageService&  fileStorage)
     : auth_(auth), registration_(registration), profile_(profile)
-    , chat_(chat), marketplace_(marketplace)
+    , chat_(chat), marketplace_(marketplace), opportunities_(opportunities)
     , forum_(forum), fileStorage_(fileStorage)
 {}
 
@@ -70,7 +72,7 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
     case MessageType::JOIN:
         chat_.handleJoin(msg, sender);             break;
     case MessageType::LEAVE:
-        chat_.handleLeave(msg, sender);            break;
+        chat_.handleLeave(msg, sender);             break;
 
     // ── marketplace ───────────────────────────────────────────────────────
     case MessageType::MARKET_POST:
@@ -81,6 +83,16 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
         marketplace_.handleSearch(msg, sender);    break;
     case MessageType::MARKET_INQUIRY:
         marketplace_.handleInquiry(msg, sender);   break;
+
+    // ── opportunities ─────────────────────────────────────────────────────
+    case MessageType::OPP_POST:
+        opportunities_.handlePost(msg, sender);    break;
+    case MessageType::OPP_DELETE:
+        opportunities_.handleDelete(msg, sender);  break;
+    case MessageType::OPP_SEARCH:
+        opportunities_.handleSearch(msg, sender);  break;
+    case MessageType::OPP_APPLY:
+        opportunities_.handleApply(msg, sender);   break;
 
     // ── forum ─────────────────────────────────────────────────────────────
     case MessageType::QA_QUESTION:

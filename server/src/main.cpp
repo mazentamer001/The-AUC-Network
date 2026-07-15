@@ -9,6 +9,7 @@
 #include "services/ProfileService.h"
 #include "services/ChatService.h"
 #include "services/MarketplaceService.h"
+#include "services/OpportunityService.h"
 #include "services/ForumService.h"
 #include "services/FileStorageService.h"
 #include "services/AIService.h"
@@ -27,17 +28,19 @@ int main()
         ProfileService      profile(store);
         ChatService         chat(store, ai);
         MarketplaceService  marketplace(store);
+        OpportunityService  opportunities(store);
         ForumService        forum(store, ai);
         FileStorageService  fileStorage(store);
 
         Dispatcher dispatcher(auth, registration, profile,
-                              chat, marketplace, forum, fileStorage);
+                              chat, marketplace, opportunities, forum, fileStorage);
 
         Server server(io, 12345, dispatcher);
 
         auth.setServer(server);
         chat.setServer(server);
         marketplace.setServer(server);
+        opportunities.setServer(server);
         dispatcher.setServer(server);
         fileStorage.setServer(server);
         forum.setServer(server);

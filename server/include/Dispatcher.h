@@ -11,6 +11,7 @@ class RegistrationService;
 class ProfileService;
 class ChatService;
 class MarketplaceService;
+class OpportunityService;
 class ForumService;
 class FileStorageService;
 
@@ -34,6 +35,7 @@ public:
                ProfileService&      profile,
                ChatService&         chat,
                MarketplaceService&  marketplace,
+               OpportunityService&  opportunities,
                ForumService&        forum,
                FileStorageService&  fileStorage);
 
@@ -49,6 +51,7 @@ private:
     ProfileService& profile_;
     ChatService& chat_;
     MarketplaceService&  marketplace_;
+    OpportunityService&  opportunities_;
     ForumService& forum_;
     FileStorageService& fileStorage_;
 };

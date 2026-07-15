@@ -18,6 +18,8 @@ add_executable(Server
     services/ProfileService.cpp
     services/ChatService.cpp
     services/MarketplaceService.cpp
+services/OpportunityService.cpp
+    services/OpportunityService.cpp
     services/ForumService.cpp
     services/AIService.cpp
     services/FileStorageService.cpp
