@@ -1,0 +1,9 @@
+build
+.git
+.gitignore
+client
+tests
+uploads
+server/uploads
+*.pdf
+*.bak
