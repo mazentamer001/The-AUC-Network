@@ -3,17 +3,18 @@
 #include "Message.h"
 
 class QLineEdit;
+class QComboBox;
 
 class RegisterPage : public QWidget {
     Q_OBJECT
 public:
-    explicit RegisterPage(QWidget* parent = nullptr);
+explicit RegisterPage(QWidget* parent = nullptr);
 signals:
-    void submitted(const Message& msg);
-    void loginClicked();
-    void backClicked();
+void submitted(const Message& msg);
+void loginClicked();
+void backClicked();
 private slots:
-    void onSubmit();
+void onSubmit();
 private:
     QLineEdit* username_;
     QLineEdit* displayName_;
@@ -21,4 +22,7 @@ private:
     QLineEdit* password_;
     QLineEdit* uniId_;
     QLineEdit* bio_;
+    QLineEdit* major_;
+    QComboBox* year_;
+    QLineEdit* interests_;
 };

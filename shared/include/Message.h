@@ -26,7 +26,9 @@ ERROR, UNKNOWN,
     //forum votes
 FORUM_UPVOTE, FORUM_DOWNVOTE,
     // User status
-USER_ONLINE, USER_AWAY, USER_OFFLINE
+USER_ONLINE, USER_AWAY, USER_OFFLINE,
+
+AI_SUMMARIZE_REQUEST, AI_SUMMARIZE_RESPONSE
 };
 
 struct SenderInfo {
@@ -61,6 +63,10 @@ std::string bio;
 std::string profilePicUrl;
 std::string category;   // opportunity type: Job/Internship/Volunteer/Research/Other
 std::string location;   // opportunity location, e.g. "Remote"
+
+std::string major;      // profile: academic major, free text
+std::string year;       // profile: academic year (Freshman/Sophomore/Junior/Senior/Grad)
+std::string interests;  // profile: comma-separated free text
 
 std::string        serialize()                     const;
 static Message     deserialize(const std::string& raw);

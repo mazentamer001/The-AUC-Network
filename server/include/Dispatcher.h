@@ -14,6 +14,7 @@ class MarketplaceService;
 class OpportunityService;
 class ForumService;
 class FileStorageService;
+class AIService;
 
 
 //  Dispatcher
@@ -37,7 +38,8 @@ public:
                MarketplaceService&  marketplace,
                ForumService&        forum,
                FileStorageService&  fileStorage,
-               OpportunityService&  opportunity);
+               OpportunityService&  opportunity,
+               AIService&           ai);
 
     void setServer(Server& server) { server_ = &server; }
     void dispatch(const Message& msg, std::shared_ptr<Session> sender);
@@ -54,4 +56,5 @@ private:
     ForumService& forum_;
     FileStorageService& fileStorage_;
     OpportunityService&  opportunity_;
+    AIService&           ai_;
 };

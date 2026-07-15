@@ -43,6 +43,8 @@ std::string Message::typeToString(MessageType t)
     case MessageType::USER_ONLINE:   return "USER_ONLINE";
     case MessageType::USER_AWAY:     return "USER_AWAY";
     case MessageType::USER_OFFLINE:  return "USER_OFFLINE";
+    case MessageType::AI_SUMMARIZE_REQUEST:  return "AI_SUMMARIZE_REQUEST";
+    case MessageType::AI_SUMMARIZE_RESPONSE: return "AI_SUMMARIZE_RESPONSE";
     default:                            return "UNKNOWN";
     }
 }
@@ -87,6 +89,8 @@ MessageType Message::stringToType(const std::string& s)
     if (s == "USER_ONLINE")  return MessageType::USER_ONLINE;
     if (s == "USER_AWAY")    return MessageType::USER_AWAY;
     if (s == "USER_OFFLINE") return MessageType::USER_OFFLINE;
+    if (s == "AI_SUMMARIZE_REQUEST")  return MessageType::AI_SUMMARIZE_REQUEST;
+    if (s == "AI_SUMMARIZE_RESPONSE") return MessageType::AI_SUMMARIZE_RESPONSE;
     return MessageType::UNKNOWN;
 }
 
@@ -115,6 +119,9 @@ std::string Message::serialize() const
     j["profilePicUrl"]= profilePicUrl;
     j["category"]     = category;
     j["location"]     = location;
+    j["major"]        = major;
+    j["year"]         = year;
+    j["interests"]    = interests;
     j["sender"]["userId"]   = sender.userId;
     j["sender"]["username"] = sender.username;
     j["sender"]["role"]     = sender.role;
@@ -161,6 +168,9 @@ Message Message::deserialize(const std::string& raw)
     msg.profilePicUrl = get("profilePicUrl");
     msg.category      = get("category");
     msg.location      = get("location");
+    msg.major         = get("major");
+    msg.year          = get("year");
+    msg.interests     = get("interests");
     if (j.contains("sender") && j["sender"].is_object()) {
         msg.sender.userId   = j["sender"].value("userId",   "");
         msg.sender.username = j["sender"].value("username", "");

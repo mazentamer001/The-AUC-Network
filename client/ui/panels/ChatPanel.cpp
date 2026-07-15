@@ -73,6 +73,12 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     currentRoomLabel_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::bodyText()));
     topLayout->addWidget(currentRoomLabel_);
 
+    topLayout->addStretch();
+    btnSummarize_ = new QPushButton("Summarize");
+    btnSummarize_->setFixedHeight(32);
+    btnSummarize_->setStyleSheet(Theme::secondaryButton());
+    topLayout->addWidget(btnSummarize_);
+
     chatStack_ = new QStackedWidget;
     chatStack_->setStyleSheet("background: transparent; border: none;");
 
@@ -119,6 +125,8 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
     connect(btnSend,       &QPushButton::clicked,     this, &ChatPanel::onSend);
     connect(messageInput_, &QLineEdit::returnPressed, this, &ChatPanel::onSend);
     connect(btnCreate,     &QPushButton::clicked,     this, &ChatPanel::onCreateRoom);
+
+    connect(btnSummarize_, &QPushButton::clicked,     this, &ChatPanel::onSummarize);
 
     // clicking a room switches to it immediately, auto-joins if needed
     connect(roomList_, &QListWidget::currentItemChanged, this,
@@ -276,6 +284,28 @@ void ChatPanel::receiveMessage(const Message& msg)
     QString role     = QString::fromStdString(msg.role);
     QString mediaUrl = QString::fromStdString(msg.mediaUrl);
 
+   if (msg.type == MessageType::AI_SUMMARIZE_RESPONSE) {
+        awaitingSummary_ = false;
+        btnSummarize_->setEnabled(true);
+        btnSummarize_->setText("Summarize");
+        appendChat(roomId, "AI Summary", text);
+        return;
+    }
+
+    if (msg.type == MessageType::ERROR && awaitingSummary_) {
+        awaitingSummary_ = false;
+        btnSummarize_->setEnabled(true);
+        btnSummarize_->setText("Summarize");
+        appendChat(currentRoom_, "AI Summary", "⚠ " + text);
+        return;
+    }
+
+    if (msg.type == MessageType::ERROR) {
+        // not a summarize failure — let it surface as a real error, same as before
+        QMessageBox::critical(this, "Error", text);
+        return;
+    }
+
     if (msg.type == MessageType::CHAT_CREATE) {
         if (roomId.isEmpty() || role == "DIRECT") return;
 
@@ -326,6 +356,32 @@ void ChatPanel::receiveMessage(const Message& msg)
     appendChat(roomId, sender, text);
 }
 
+void ChatPanel::onSummarize()
+{
+    if (currentRoom_.isEmpty()) {
+        QMessageBox::warning(this, "No room selected", "Open a room to summarize it.");
+        return;
+    }
+    const QStringList& log = roomLog_.value(currentRoom_);
+    if (log.isEmpty()) {
+        QMessageBox::information(this, "Nothing yet", "No messages in this room yet.");
+        return;
+    }
+
+    btnSummarize_->setEnabled(false);
+    btnSummarize_->setText("Summarizing…");
+    awaitingSummary_ = true;
+
+    Message msg;
+    msg.type            = MessageType::AI_SUMMARIZE_REQUEST;
+    msg.roomId          = currentRoom_.toStdString();
+    msg.text             = log.join("\n").toStdString();
+    msg.sender.username = displayName_.toStdString();
+    msg.sender.userId   = userId_.toStdString();
+    emit messageSent(msg);
+}
+
+
 void ChatPanel::appendChat(const QString& roomId, const QString& sender, const QString& text)
 {
     if (roomId.isEmpty()) return;
@@ -342,7 +398,13 @@ void ChatPanel::appendChat(const QString& roomId, const QString& sender, const Q
 
     bool isSystem = (sender == "System");
     bool isMe     = (sender == displayName_);
-    QString color = isSystem ? Theme::TEXT_SECONDARY : isMe ? Theme::TEXT_PRIMARY : Theme::ACCENT;
+    bool isAI     = (sender == "AI Summary");
+    QString color = isSystem ? Theme::TEXT_SECONDARY
+                   : isAI    ? Theme::ACCENT2
+                   : isMe    ? Theme::TEXT_PRIMARY : Theme::ACCENT;
+                   
+    if (!isSystem && sender != "AI Summary")
+        roomLog_[roomId] << (sender + ": " + text);
 
     auto* view = roomViews_[roomId];
     view->append(
@@ -452,6 +514,7 @@ void ChatPanel::resetState()
     roomNames_.clear();
     roomMeta_.clear();
     knownUsers_.clear();
+    roomLog_.clear();
 
     currentRoom_.clear();
     currentRoomLabel_->setText("Select a room");

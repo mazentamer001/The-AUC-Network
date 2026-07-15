@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Boost REQUIRED COMPONENTS system)
+find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
 
 # ── SQLiteCpp ─────────────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ add_executable(Server
     services/ForumService.cpp
     services/FileStorageService.cpp
     services/OpportunityService.cpp
+    services/AIService.cpp
 )
 
 target_include_directories(Server PRIVATE
@@ -52,6 +54,8 @@ target_include_directories(Server PRIVATE
 
 target_link_libraries(Server PRIVATE
     Boost::system
+    OpenSSL::SSL
+    OpenSSL::Crypto
     Threads::Threads
     SQLiteCpp
     Shared

@@ -42,6 +42,9 @@ void Database::createTables()
             role         TEXT NOT NULL DEFAULT 'USER',
             bio          TEXT DEFAULT '',
             profilePicUrl TEXT DEFAULT '',
+            major        TEXT DEFAULT '',
+            year         TEXT DEFAULT '',
+            interests    TEXT DEFAULT '',
             createdAt    TEXT NOT NULL
         );
 
@@ -162,6 +165,9 @@ UserRecord Database::rowToUser(SQLite::Statement& q)
     u.role          = roleFromString(q.getColumn("role").getText());
     u.bio           = q.getColumn("bio").getText();
     u.profilePicUrl = q.getColumn("profilePicUrl").getText();
+    u.major         = q.getColumn("major").getText();
+    u.year          = yearFromString(q.getColumn("year").getText());
+    u.interests     = q.getColumn("interests").getText();
     u.createdAt     = q.getColumn("createdAt").getText();
     return u;
 }
@@ -242,8 +248,8 @@ bool Database::addUser_nolock(const UserRecord& u)
     try {
         SQLite::Statement q(*db_,
             "INSERT INTO users (userId,username,displayName,email,passwordHash,"
-            "universityId,role,bio,profilePicUrl,createdAt) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?)");
+            "universityId,role,bio,profilePicUrl,major,year,interests,createdAt) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
         q.bind(1,  u.userId);
         q.bind(2,  u.username);
         q.bind(3,  u.displayName);
@@ -253,7 +259,10 @@ bool Database::addUser_nolock(const UserRecord& u)
         q.bind(7,  roleToString(u.role));
         q.bind(8,  u.bio);
         q.bind(9,  u.profilePicUrl);
-        q.bind(10, u.createdAt);
+        q.bind(10, u.major);
+        q.bind(11, yearToString(u.year));
+        q.bind(12, u.interests);
+        q.bind(13, u.createdAt);
         q.exec();
         return true;
     } catch (const SQLite::Exception& e) {
@@ -335,6 +344,9 @@ bool Database::updateUser_nolock(const std::string& userId, const UserRecord& pa
         if (!patch.profilePicUrl.empty()) parts.push_back("profilePicUrl=?");
         if (!patch.passwordHash.empty())  parts.push_back("passwordHash=?");
         if (!patch.username.empty())      parts.push_back("username=?");
+        if (!patch.major.empty())         parts.push_back("major=?");
+        if (patch.year != Year::UNSPECIFIED) parts.push_back("year=?");
+        if (!patch.interests.empty())     parts.push_back("interests=?");
         if (parts.empty()) return true;
 
         for (size_t i = 0; i < parts.size(); i++)
@@ -348,6 +360,9 @@ bool Database::updateUser_nolock(const std::string& userId, const UserRecord& pa
         if (!patch.profilePicUrl.empty()) q.bind(idx++, patch.profilePicUrl);
         if (!patch.passwordHash.empty())  q.bind(idx++, patch.passwordHash);
         if (!patch.username.empty())      q.bind(idx++, patch.username);
+        if (!patch.major.empty())         q.bind(idx++, patch.major);
+        if (patch.year != Year::UNSPECIFIED) q.bind(idx++, yearToString(patch.year));
+        if (!patch.interests.empty())     q.bind(idx++, patch.interests);
         q.bind(idx, userId);
         q.exec();
         return true;

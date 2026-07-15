@@ -39,6 +39,9 @@ void RegistrationService::handleRegister(const Message& msg, std::shared_ptr<Ses
     user.role = Role::USER;          //never trust client-supplied role
     user.bio = msg.bio;             //optional, may be empty
     user.profilePicUrl = "";                 //set later via ProfileService
+    user.major = msg.major;         //optional, may be empty
+    user.year = yearFromString(msg.year);   //optional, defaults to UNSPECIFIED
+    user.interests = msg.interests; //optional, may be empty
 
     auto now = std::chrono::system_clock::now();
     std::time_t t = std::chrono::system_clock::to_time_t(now);

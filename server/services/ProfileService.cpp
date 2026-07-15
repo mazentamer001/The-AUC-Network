@@ -1,5 +1,6 @@
 #include "services/ProfileService.h"
 #include "store/InMemoryStore.h"
+#include "models/UserRecord.h"
 #include "Session.h"
 #include <functional>
 #include <iostream>
@@ -27,6 +28,9 @@ void ProfileService::handleGet(const Message& msg, std::shared_ptr<Session> send
     resp.profilePicUrl = userOpt->profilePicUrl;
     resp.email         = userOpt->email;
     resp.universityId  = userOpt->universityId;
+    resp.major         = userOpt->major;
+    resp.year          = yearToString(userOpt->year);
+    resp.interests     = userOpt->interests;
     sender->send(resp);
 }
 
@@ -49,6 +53,18 @@ void ProfileService::handleEdit(const Message& msg, std::shared_ptr<Session> sen
     //profile pic
     if (!msg.profilePicUrl.empty())
         patch.profilePicUrl = msg.profilePicUrl;
+
+    //major
+    if (!msg.major.empty())
+        patch.major = msg.major;
+
+    //year
+    if (!msg.year.empty())
+        patch.year = yearFromString(msg.year);
+
+    //interests
+    if (!msg.interests.empty())
+        patch.interests = msg.interests;
 
     //username change
     if (!msg.username.empty() && msg.username != userOpt->username) {

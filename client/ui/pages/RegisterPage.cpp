@@ -3,6 +3,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QComboBox>
 #include <QPushButton>
 #include <QMessageBox>
 
@@ -63,6 +64,19 @@ RegisterPage::RegisterPage(QWidget* parent) : QWidget(parent)
     addField(password_,    "Password",      "At least 8 characters", true);
     addField(uniId_,       "University ID", "900XXXXXX");
     addField(bio_,         "Bio (optional)","Tell us about yourself");
+    addField(major_,       "Major (optional)", "e.g. Computer Science");
+
+    auto* yearLbl = new QLabel("Year (optional)");
+    yearLbl->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
+    cardLayout->addWidget(yearLbl);
+    year_ = new QComboBox;
+    year_->addItems({"", "Freshman", "Sophomore", "Junior", "Senior", "Grad"});
+    year_->setFixedHeight(36);
+    year_->setStyleSheet(Theme::textInput());
+    cardLayout->addWidget(year_);
+    cardLayout->addSpacing(8);
+
+    addField(interests_, "Interests (optional)", "e.g. Robotics, Photography, Chess");
 
     auto* btnSubmit = new QPushButton("Create account");
     btnSubmit->setFixedHeight(40);
@@ -105,5 +119,8 @@ void RegisterPage::onSubmit()
     msg.password     = password_->text().toStdString();
     msg.universityId = uniId_->text().toStdString();
     msg.bio          = bio_->text().toStdString();
+    msg.major        = major_->text().trimmed().toStdString();
+    msg.year         = year_->currentText().toStdString();
+    msg.interests    = interests_->text().trimmed().toStdString();
     emit submitted(msg);
 }

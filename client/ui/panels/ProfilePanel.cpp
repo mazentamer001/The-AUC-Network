@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QTextEdit>
+#include <QComboBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QMessageBox>
@@ -128,6 +129,30 @@ ProfilePanel::ProfilePanel(QWidget* parent) : QWidget(parent)
     profilePicInput_->setFixedHeight(36);
     profilePicInput_->setStyleSheet(Theme::textInput());
     editLayout->addWidget(profilePicInput_);
+    editLayout->addSpacing(8);
+
+    editLayout->addWidget(lbl("Major"));
+    majorInput_ = new QLineEdit;
+    majorInput_->setPlaceholderText("e.g. Computer Science");
+    majorInput_->setFixedHeight(36);
+    majorInput_->setStyleSheet(Theme::textInput());
+    editLayout->addWidget(majorInput_);
+    editLayout->addSpacing(8);
+
+    editLayout->addWidget(lbl("Year"));
+    yearInput_ = new QComboBox;
+    yearInput_->addItems({"", "Freshman", "Sophomore", "Junior", "Senior", "Grad"});
+    yearInput_->setFixedHeight(36);
+    yearInput_->setStyleSheet(Theme::textInput());
+    editLayout->addWidget(yearInput_);
+    editLayout->addSpacing(8);
+
+    editLayout->addWidget(lbl("Interests"));
+    interestsInput_ = new QLineEdit;
+    interestsInput_->setPlaceholderText("e.g. Robotics, Photography, Chess");
+    interestsInput_->setFixedHeight(36);
+    interestsInput_->setStyleSheet(Theme::textInput());
+    editLayout->addWidget(interestsInput_);
     editLayout->addSpacing(14);
 
     auto* btnSave = new QPushButton("Save changes");
@@ -260,6 +285,9 @@ void ProfilePanel::populateFields(const Message& msg)
     QString role        = QString::fromStdString(msg.role);
     QString email       = QString::fromStdString(msg.email);
     QString uniId       = QString::fromStdString(msg.universityId);
+    QString major       = QString::fromStdString(msg.major);
+    QString year        = QString::fromStdString(msg.year);
+    QString interests   = QString::fromStdString(msg.interests);
 
     if (!username.isEmpty())    usernameDisplay_->setText(username);
     if (!displayName.isEmpty()) displayNameInput_->setText(displayName);
@@ -269,6 +297,9 @@ void ProfilePanel::populateFields(const Message& msg)
     if (!role.isEmpty())        roleLabel_->setText(role);
     if (!email.isEmpty())       emailLabel_->setText(email);
     if (!uniId.isEmpty())       uniIdLabel_->setText(uniId);
+    if (!major.isEmpty())       majorInput_->setText(major);
+    if (!year.isEmpty())        yearInput_->setCurrentText(year);
+    if (!interests.isEmpty())   interestsInput_->setText(interests);
 
     if (picUrl.isEmpty()) {
         avatarLabel_->setPixmap(QPixmap());
@@ -292,6 +323,9 @@ void ProfilePanel::onSaveProfile()
     msg.username      = usernameInput_->text().trimmed().toStdString();
     msg.bio           = bioInput_->text().trimmed().toStdString();
     msg.profilePicUrl = profilePicInput_->text().trimmed().toStdString();
+    msg.major         = majorInput_->text().trimmed().toStdString();
+    msg.year          = yearInput_->currentText().toStdString();
+    msg.interests     = interestsInput_->text().trimmed().toStdString();
     emit sendMessage(msg);
 }
 

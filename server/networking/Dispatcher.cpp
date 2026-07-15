@@ -10,6 +10,7 @@
 #include "services/ForumService.h"
 #include "services/FileStorageService.h"
 #include "services/OpportunityService.h"
+#include "services/AIService.h"
 #include <iostream>
 
 Dispatcher::Dispatcher(AuthService&         auth,
@@ -19,11 +20,13 @@ Dispatcher::Dispatcher(AuthService&         auth,
                        MarketplaceService&  marketplace,
                        ForumService&        forum,
                        FileStorageService&  fileStorage,
-                       OpportunityService&  opportunity)
+                       OpportunityService&  opportunity,
+                       AIService&           ai)
     : auth_(auth), registration_(registration), profile_(profile)
     , chat_(chat), marketplace_(marketplace)
     , forum_(forum), fileStorage_(fileStorage)
     , opportunity_(opportunity)
+    , ai_(ai)
 {}
 
 void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
@@ -72,6 +75,10 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
         chat_.handleJoin(msg, sender);             break;
     case MessageType::LEAVE:
         chat_.handleLeave(msg, sender);            break;
+
+    // ── AI ────────────────────────────────────────────────────────────────
+    case MessageType::AI_SUMMARIZE_REQUEST:
+        ai_.handleSummarize(msg, sender);          break;
 
     // ── marketplace ───────────────────────────────────────────────────────
     case MessageType::MARKET_POST:

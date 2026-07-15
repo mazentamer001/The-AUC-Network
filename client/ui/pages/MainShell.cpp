@@ -175,9 +175,13 @@ void MainShell::routeMessage(const Message& msg)
     case MessageType::CHAT_PUBLIC:
     case MessageType::CHAT_PRIVATE:
     case MessageType::JOIN:
+    case MessageType::AI_SUMMARIZE_RESPONSE:
         chatPanel_->receiveMessage(msg);
         break;
     case MessageType::LEAVE:
+        chatPanel_->receiveMessage(msg);
+        break;
+    case MessageType::ERROR:
         chatPanel_->receiveMessage(msg);
         break;
 

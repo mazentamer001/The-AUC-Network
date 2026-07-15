@@ -48,7 +48,15 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
     connect(registerPage_, &RegisterPage::backClicked,     this, &MainWindow::showHome);
     connect(loginPage_,    &LoginPage::registerClicked,    this, &MainWindow::showRegister);
     connect(loginPage_,    &LoginPage::backClicked,        this, &MainWindow::showHome);
-    connect(mainShell_,    &MainShell::logoutClicked,      this, &MainWindow::showHome);
+    connect(mainShell_, &MainShell::logoutClicked, this, [this](){  //bug: registartion successful message appears after you log out
+        if (!token_.isEmpty()) {
+            Message msg;
+            msg.type  = MessageType::AUTH_LOGOUT;
+            msg.token = token_.toStdString();
+            sendToServer(msg);
+        }
+        showHome();
+    });
 
     // form submissions → send to server
     connect(registerPage_, &RegisterPage::submitted, this, &MainWindow::sendToServer);
@@ -131,8 +139,7 @@ void MainWindow::onMessage(const Message& msg)
         break;
 
     case MessageType::ERROR:
-        QMessageBox::critical(this, "Error",
-            QString::fromStdString(msg.text));
+        mainShell_->routeMessage(msg);
         break;
 
     default:

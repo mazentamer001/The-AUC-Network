@@ -13,6 +13,7 @@ class QListWidgetItem;
 class QTextEdit;
 class QLineEdit;
 class QLabel;
+class QPushButton; 
 
 class ChatPanel : public QWidget {
     Q_OBJECT
@@ -26,7 +27,7 @@ public:
     void removeOnlineUser(const QString& userId);
     void addKnownRoom(const QString& roomId);
     void setUserStatus(const QString& userId, UserStatus status);
-     void resetState();
+    void resetState();
 
 signals:
     void messageSent(const Message& msg);
@@ -37,7 +38,8 @@ private slots:
     void onSend();
     void onCreateRoom();
     void onMessageUser(const QString& userId);  
-    void onViewProfile(const QString& userId); 
+    void onViewProfile(const QString& userId);
+    void onSummarize(); 
 
 private:
     struct RoomMeta {
@@ -66,4 +68,8 @@ private:
     QString currentRoom_;
     QString displayName_;
     QString userId_;
+
+    QMap<QString, QStringList> roomLog_;   // plain-text history per room, for summarization
+    QPushButton*               btnSummarize_;
+    bool                       awaitingSummary_ = false;
 };
