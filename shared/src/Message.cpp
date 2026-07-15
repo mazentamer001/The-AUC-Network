@@ -25,6 +25,10 @@ std::string Message::typeToString(MessageType t)
     case MessageType::MARKET_DELETE:    return "MARKET_DELETE";
     case MessageType::MARKET_SEARCH:    return "MARKET_SEARCH";
     case MessageType::MARKET_INQUIRY:   return "MARKET_INQUIRY";
+    case MessageType::OPP_POST:         return "OPP_POST";
+    case MessageType::OPP_DELETE:       return "OPP_DELETE";
+    case MessageType::OPP_SEARCH:       return "OPP_SEARCH";
+    case MessageType::OPP_APPLY:        return "OPP_APPLY";
     case MessageType::MATERIAL_UPLOAD:  return "MATERIAL_UPLOAD";
     case MessageType::MATERIAL_REPORT:  return "MATERIAL_REPORT";
     case MessageType::MATERIAL_LIST:    return "MATERIAL_LIST";
@@ -61,6 +65,10 @@ MessageType Message::stringToType(const std::string& s)
     if (s == "MARKET_DELETE")   return MessageType::MARKET_DELETE;
     if (s == "MARKET_SEARCH")   return MessageType::MARKET_SEARCH;
     if (s == "MARKET_INQUIRY")  return MessageType::MARKET_INQUIRY;
+    if (s == "OPP_POST")        return MessageType::OPP_POST;
+    if (s == "OPP_DELETE")      return MessageType::OPP_DELETE;
+    if (s == "OPP_SEARCH")      return MessageType::OPP_SEARCH;
+    if (s == "OPP_APPLY")       return MessageType::OPP_APPLY;
     if (s == "MATERIAL_UPLOAD") return MessageType::MATERIAL_UPLOAD;
     if (s == "MATERIAL_REPORT") return MessageType::MATERIAL_REPORT;
     if (s == "MATERIAL_LIST")   return MessageType::MATERIAL_LIST;
@@ -73,8 +81,6 @@ MessageType Message::stringToType(const std::string& s)
     if (s == "QA_GET_ALL")      return MessageType::QA_GET_ALL;
     if (s == "QA_GET_ONE")      return MessageType::QA_GET_ONE;
     if (s == "ERROR")           return MessageType::ERROR;
-    if (s == "FORUM_UPVOTE")    return MessageType::FORUM_UPVOTE;
-    if (s == "FORUM_DOWNVOTE")  return MessageType::FORUM_DOWNVOTE;
     return MessageType::UNKNOWN;
 }
 
@@ -101,6 +107,10 @@ std::string Message::serialize() const
     j["parentId"]     = parentId;
     j["bio"]          = bio;
     j["profilePicUrl"]= profilePicUrl;
+    j["oppType"]       = oppType;
+    j["organization"]  = organization;
+    j["deadline"]      = deadline;
+    j["contactInfo"]   = contactInfo;
     j["sender"]["userId"]   = sender.userId;
     j["sender"]["username"] = sender.username;
     j["sender"]["role"]     = sender.role;
@@ -145,6 +155,10 @@ Message Message::deserialize(const std::string& raw)
     msg.parentId      = get("parentId");
     msg.bio           = get("bio");
     msg.profilePicUrl = get("profilePicUrl");
+    msg.oppType      = get("oppType");
+    msg.organization = get("organization");
+    msg.deadline     = get("deadline");
+    msg.contactInfo  = get("contactInfo");
     if (j.contains("sender") && j["sender"].is_object()) {
         msg.sender.userId   = j["sender"].value("userId",   "");
         msg.sender.username = j["sender"].value("username", "");

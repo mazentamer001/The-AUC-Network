@@ -14,6 +14,8 @@ enum class MessageType {
     PRESENCE, JOIN, LEAVE,
     //marketplace
     MARKET_POST, MARKET_DELETE, MARKET_SEARCH, MARKET_INQUIRY,
+    //opportunities
+    OPP_POST, OPP_DELETE, OPP_SEARCH, OPP_APPLY,
     //files
     MATERIAL_UPLOAD, MATERIAL_REPORT, MATERIAL_LIST, MATERIAL_GET,
     //forum
@@ -54,6 +56,11 @@ struct Message {
     std::string parentId;
     std::string bio;
     std::string profilePicUrl;
+
+    std::string oppType;
+    std::string organization;
+    std::string deadline;
+    std::string contactInfo;
 
     std::string        serialize()                     const;
     static Message     deserialize(const std::string& raw);
