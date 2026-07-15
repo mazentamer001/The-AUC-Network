@@ -7,6 +7,7 @@ class QToolButton;
 class QTextEdit;
 class ChatPanel;
 class MarketplacePanel;
+class OpportunitiesPanel;
 class FilesPanel;
 class ForumPanel;
 class ProfilePanel;
@@ -28,16 +29,18 @@ private:
     QToolButton* makeNavBtn(const QString& icon, const QString& tip);
     void         log(const QString& text);
 
-    QStackedWidget*    contentStack_;
-    QTextEdit*         logView_;
-    ChatPanel*         chatPanel_;
-    MarketplacePanel*  marketPanel_;
-    FilesPanel*        filesPanel_;
-    ForumPanel*        forumPanel_;
-    ProfilePanel*      profilePanel_;
+    QStackedWidget*      contentStack_;
+    QTextEdit*           logView_;
+    ChatPanel*           chatPanel_;
+    MarketplacePanel*    marketPanel_;
+    OpportunitiesPanel*  oppPanel_;
+    FilesPanel*          filesPanel_;
+    ForumPanel*          forumPanel_;
+    ProfilePanel*        profilePanel_;
 
     QToolButton* btnChat_;
     QToolButton* btnMarket_;
+    QToolButton* btnOpportunities_;
     QToolButton* btnFiles_;
     QToolButton* btnForum_;
     QToolButton* btnProfile_;

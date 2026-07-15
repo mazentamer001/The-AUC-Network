@@ -1,6 +1,7 @@
 #include "MainShell.h"
 #include "ui/panels/ChatPanel.h"
 #include "ui/panels/MarketplacePanel.h"
+#include "ui/panels/OpportunitiesPanel.h"
 #include "ui/panels/FilesPanel.h"
 #include "ui/panels/ForumPanel.h"
 #include "ui/panels/ProfilePanel.h"
@@ -25,7 +26,6 @@ MainShell::MainShell(QWidget* parent) : QWidget(parent)
     row->setContentsMargins(0, 0, 0, 0);
     row->setSpacing(0);
 
-    // ── sidebar ──────────────────────────────────────────────────────────
     auto* iconBar = new QWidget;
     iconBar->setObjectName("navSidebar");
     iconBar->setFixedWidth(180);
@@ -46,16 +46,18 @@ MainShell::MainShell(QWidget* parent) : QWidget(parent)
     iconLayout->addWidget(logoLabel);
     iconLayout->addSpacing(12);
 
-    btnChat_    = makeNavBtn("Chat", "Open chat");
-    btnMarket_  = makeNavBtn("Marketplace", "Open marketplace");
-    btnFiles_   = makeNavBtn("Files", "Open files");
-    btnForum_   = makeNavBtn("Forum", "Open forum");
-    btnProfile_ = makeNavBtn("Profile", "Open profile");
+    btnChat_          = makeNavBtn("Chat", "Open chat");
+    btnMarket_        = makeNavBtn("Marketplace", "Open marketplace");
+    btnOpportunities_ = makeNavBtn("Opportunities", "Open opportunities");
+    btnFiles_         = makeNavBtn("Files", "Open files");
+    btnForum_         = makeNavBtn("Forum", "Open forum");
+    btnProfile_       = makeNavBtn("Profile", "Open profile");
 
     btnChat_->setChecked(true);
 
     iconLayout->addWidget(btnChat_);
     iconLayout->addWidget(btnMarket_);
+    iconLayout->addWidget(btnOpportunities_);
     iconLayout->addWidget(btnFiles_);
     iconLayout->addWidget(btnForum_);
     iconLayout->addWidget(btnProfile_);
@@ -72,18 +74,19 @@ MainShell::MainShell(QWidget* parent) : QWidget(parent)
     ).arg(Theme::TEXT_SECONDARY, Theme::SURFACE, Theme::DANGER));
     iconLayout->addWidget(btnLogout);
 
-    // ── content stack ────────────────────────────────────────────────────
     contentStack_ = new QStackedWidget;
     contentStack_->setStyleSheet(QString("background: %1; border: none;").arg(Theme::SURFACE));
 
     chatPanel_    = new ChatPanel;
     marketPanel_  = new MarketplacePanel;
+    oppPanel_     = new OpportunitiesPanel;
     filesPanel_   = new FilesPanel;
     forumPanel_   = new ForumPanel;
     profilePanel_ = new ProfilePanel;
 
     contentStack_->addWidget(chatPanel_);
     contentStack_->addWidget(marketPanel_);
+    contentStack_->addWidget(oppPanel_);
     contentStack_->addWidget(filesPanel_);
     contentStack_->addWidget(forumPanel_);
     contentStack_->addWidget(profilePanel_);
@@ -91,7 +94,6 @@ MainShell::MainShell(QWidget* parent) : QWidget(parent)
     row->addWidget(iconBar);
     row->addWidget(contentStack_, 1);
 
-    // ── activity log strip ───────────────────────────────────────────────
     logView_ = new QTextEdit;
     logView_->setReadOnly(true);
     logView_->setMaximumHeight(64);
@@ -102,32 +104,33 @@ MainShell::MainShell(QWidget* parent) : QWidget(parent)
     root->addLayout(row, 1);
     root->addWidget(logView_);
 
-    // ── navigation logic ─────────────────────────────────────────────────
     auto switchTo = [this](int idx, QToolButton* active){
         contentStack_->setCurrentIndex(idx);
-        for (auto* b : {btnChat_, btnMarket_, btnFiles_, btnForum_, btnProfile_})
+        for (auto* b : {btnChat_, btnMarket_, btnOpportunities_, btnFiles_, btnForum_, btnProfile_})
             b->setChecked(false);
         active->setChecked(true);
     };
 
-    connect(btnChat_,    &QToolButton::clicked, [=]{ switchTo(0, btnChat_); });
-    connect(btnMarket_,  &QToolButton::clicked, [=]{ switchTo(1, btnMarket_); });
-    connect(btnFiles_,   &QToolButton::clicked, [=]{ switchTo(2, btnFiles_); });
-    connect(btnForum_,   &QToolButton::clicked, [=]{ switchTo(3, btnForum_); });
-    connect(btnProfile_, &QToolButton::clicked, [=]{ switchTo(4, btnProfile_); });
-    connect(btnLogout,   &QToolButton::clicked, this, &MainShell::logoutClicked);
+    connect(btnChat_,          &QToolButton::clicked, [=]{ switchTo(0, btnChat_); });
+    connect(btnMarket_,        &QToolButton::clicked, [=]{ switchTo(1, btnMarket_); });
+    connect(btnOpportunities_, &QToolButton::clicked, [=]{ switchTo(2, btnOpportunities_); });
+    connect(btnFiles_,         &QToolButton::clicked, [=]{ switchTo(3, btnFiles_); });
+    connect(btnForum_,         &QToolButton::clicked, [=]{ switchTo(4, btnForum_); });
+    connect(btnProfile_,       &QToolButton::clicked, [=]{ switchTo(5, btnProfile_); });
+    connect(btnLogout,         &QToolButton::clicked, this, &MainShell::logoutClicked);
 
-    connect(chatPanel_,    &ChatPanel::messageSent,        this, &MainShell::sendMessage);
-    connect(chatPanel_,    &ChatPanel::roomCreated,        this, &MainShell::sendMessage);
-    connect(chatPanel_,    &ChatPanel::roomJoined,         this, &MainShell::sendMessage);
-    connect(marketPanel_,  &MarketplacePanel::sendMessage, this, &MainShell::sendMessage);
-    connect(filesPanel_,   &FilesPanel::sendMessage,       this, &MainShell::sendMessage);
-    connect(forumPanel_,   &ForumPanel::sendMessage,       this, &MainShell::sendMessage);
-    connect(profilePanel_, &ProfilePanel::sendMessage,     this, &MainShell::sendMessage);
+    connect(chatPanel_,    &ChatPanel::messageSent,           this, &MainShell::sendMessage);
+    connect(chatPanel_,    &ChatPanel::roomCreated,           this, &MainShell::sendMessage);
+    connect(chatPanel_,    &ChatPanel::roomJoined,            this, &MainShell::sendMessage);
+    connect(marketPanel_,  &MarketplacePanel::sendMessage,    this, &MainShell::sendMessage);
+    connect(oppPanel_,     &OpportunitiesPanel::sendMessage,  this, &MainShell::sendMessage);
+    connect(filesPanel_,   &FilesPanel::sendMessage,          this, &MainShell::sendMessage);
+    connect(forumPanel_,   &ForumPanel::sendMessage,          this, &MainShell::sendMessage);
+    connect(profilePanel_, &ProfilePanel::sendMessage,        this, &MainShell::sendMessage);
 
     connect(marketPanel_, &MarketplacePanel::openRoom, this, [this](const QString& roomId){
         contentStack_->setCurrentIndex(0);
-        for (auto* b : {btnChat_, btnMarket_, btnFiles_, btnForum_, btnProfile_})
+        for (auto* b : {btnChat_, btnMarket_, btnOpportunities_, btnFiles_, btnForum_, btnProfile_})
             b->setChecked(false);
         btnChat_->setChecked(true);
         chatPanel_->openDirectRoom(roomId);
@@ -143,6 +146,8 @@ void MainShell::setCurrentUser(const QString& displayName,
     chatPanel_->setCurrentUser(displayName, userId);
     marketPanel_->setCurrentUser(displayName, userId);
     marketPanel_->setToken(token);
+    oppPanel_->setCurrentUser(displayName, userId);
+    oppPanel_->setToken(token);
     filesPanel_->setCurrentUser(displayName, userId, token);
     forumPanel_->setCurrentUser(displayName, userId, token);
     profilePanel_->setCurrentUser(displayName, userId, username, "", token);
@@ -167,6 +172,13 @@ void MainShell::routeMessage(const Message& msg)
     case MessageType::MARKET_INQUIRY:
     case MessageType::MARKET_SEARCH:
         marketPanel_->receiveMessage(msg);
+        break;
+
+    case MessageType::OPP_POST:
+    case MessageType::OPP_DELETE:
+    case MessageType::OPP_SEARCH:
+    case MessageType::OPP_APPLY:
+        oppPanel_->receiveMessage(msg);
         break;
 
     case MessageType::MATERIAL_UPLOAD:

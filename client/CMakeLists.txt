@@ -35,6 +35,7 @@ add_executable(TestGUI
     ui/pages/MainShell.cpp
     ui/panels/ChatPanel.cpp
     ui/panels/MarketplacePanel.cpp
+ui/panels/OpportunitiesPanel.cpp 
     ui/panels/FilesPanel.cpp
     ui/panels/ForumPanel.cpp
     ui/panels/ProfilePanel.cpp
