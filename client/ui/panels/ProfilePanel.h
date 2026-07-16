@@ -24,6 +24,7 @@ void receiveMessage(const Message& msg);
 
 signals:
 void sendMessage(const Message& msg);
+void photoChanged(const QString& userId, const QString& photoData); 
 
 private slots:
 void onSaveProfile();

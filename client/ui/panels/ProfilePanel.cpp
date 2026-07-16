@@ -333,6 +333,10 @@ void ProfilePanel::receiveMessage(const Message& msg)
         return;
     }
     if (msg.type == MessageType::PROFILE_EDIT) {
+        if (!msg.username.empty() || !msg.displayName.empty()) {
+            // a real updated-profile payload, not just the password-change confirmation
+            populateFields(msg);
+        }
         QMessageBox::information(this, "Profile updated", "Your profile has been updated.");
         return;
     }
@@ -387,6 +391,8 @@ void ProfilePanel::onSaveProfile()
     msg.year          = yearInput_->currentText().toStdString();
     msg.interests     = interestsInput_->text().trimmed().toStdString();
     emit sendMessage(msg);
+    if (!pendingImageBase64_.isEmpty())
+        emit photoChanged(userId_, pendingImageBase64_);
 
     pendingImageBase64_.clear();
 }

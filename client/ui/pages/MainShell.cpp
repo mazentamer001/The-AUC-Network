@@ -131,6 +131,7 @@ MainShell::MainShell(QWidget* parent) : QWidget(parent)
     connect(filesPanel_,   &FilesPanel::sendMessage,       this, &MainShell::sendMessage);
     connect(forumPanel_,   &ForumPanel::sendMessage,       this, &MainShell::sendMessage);
     connect(profilePanel_, &ProfilePanel::sendMessage,      this, &MainShell::sendMessage);
+    connect(profilePanel_, &ProfilePanel::photoChanged, chatPanel_, &ChatPanel::setUserPhoto);
 
     connect(marketPanel_, &MarketplacePanel::openRoom, this, [this](const QString& roomId){
         contentStack_->setCurrentIndex(0);

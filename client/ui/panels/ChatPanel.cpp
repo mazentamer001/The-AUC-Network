@@ -135,16 +135,17 @@ ChatPanel::ChatPanel(QWidget* parent) : QWidget(parent)
         QString roomId = current->data(Qt::UserRole).toString();
         if (roomId.isEmpty()) return;
 
-        switchToRoom(roomId);
-
         if (!joinedRooms_.contains(roomId)) {
+            joinedRooms_.insert(roomId);   // optimistic, same pattern as onCreateRoom
             Message msg;
             msg.type            = MessageType::JOIN;
             msg.roomId          = roomId.toStdString();
             msg.sender.username = displayName_.toStdString();
             msg.sender.userId   = userId_.toStdString();
-            emit roomJoined(msg);
+            emit roomJoined(msg);          // JOIN goes out first
         }
+
+        switchToRoom(roomId);              // THEN request history
     });
 }
 
@@ -250,19 +251,18 @@ void ChatPanel::onSend()
 void ChatPanel::onCreateRoom()
 {
     QMap<QString, QString> candidates = knownUsers_;
-    candidates.remove(userId_); // can't invite yourself, you're always a member
+    candidates.remove(userId_);
 
     CreateRoomDialog dlg(candidates, this);
     if (dlg.exec() != QDialog::Accepted)
         return;
 
     QString     roomName = dlg.roomName();
-    bool        priv      = dlg.isPrivate();
-    QStringList members   = dlg.selectedMemberIds();
+    bool        priv     = dlg.isPrivate();
+    QStringList members  = dlg.selectedMemberIds();
 
     QString roomId = QUuid::createUuid().toString(QUuid::WithoutBraces);
 
-    // optimistic local state — don't wait for the server round-trip
     joinedRooms_.insert(roomId);
 
     RoomMeta meta;
@@ -271,19 +271,19 @@ void ChatPanel::onCreateRoom()
     meta.members << userId_;
     roomMeta_[roomId] = meta;
 
-    auto* item = ensureRoomListItem(roomId, roomName);
-    switchToRoom(roomId);
-    roomList_->setCurrentItem(item);
-
     Message msg;
-    msg.type             = MessageType::CHAT_CREATE;
-    msg.roomId           = roomId.toStdString();
-    msg.text             = roomName.toStdString();
-    msg.role              = priv ? "GROUP" : "PUBLIC";
-    msg.mediaUrl          = members.join(",").toStdString();
-    msg.sender.username   = displayName_.toStdString();
-    msg.sender.userId     = userId_.toStdString();
-    emit roomCreated(msg);
+    msg.type              = MessageType::CHAT_CREATE;
+    msg.roomId            = roomId.toStdString();
+    msg.text               = roomName.toStdString();
+    msg.role               = priv ? "GROUP" : "PUBLIC";
+    msg.mediaUrl           = members.join(",").toStdString();
+    msg.sender.username    = displayName_.toStdString();
+    msg.sender.userId      = userId_.toStdString();
+    emit roomCreated(msg);            // CREATE goes out first
+
+    auto* item = ensureRoomListItem(roomId, roomName);
+    switchToRoom(roomId);             // THEN request history
+    roomList_->setCurrentItem(item);
 }
 
 void ChatPanel::receiveMessage(const Message& msg)

@@ -2,6 +2,7 @@
 #include "store/InMemoryStore.h"
 #include "models/UserRecord.h"
 #include "Session.h"
+#include "Server.h"
 #include <functional>
 #include <iostream>
 #include <sstream>
@@ -87,15 +88,46 @@ void ProfileService::handleEdit(const Message& msg, std::shared_ptr<Session> sen
         patch.passwordHash = hashPassword(msg.password);
     }
 
-    if (!store_.updateUser(sender->userId(), patch)) {
+   if (!store_.updateUser(sender->userId(), patch)) {
         sendError("Failed to update profile", sender); return;
     }
 
     std::cout << "Profile updated: " << sender->userId() << "\n";
 
+    // re-fetch the fresh record and send it back in full, so the client
+    // can repopulate its UI without a second round trip
+    auto updated = store_.findUserById(sender->userId());
+    if (!updated) { sendError("Failed to reload profile after update", sender); return; }
+
+    // if the photo changed, let every other connected client know so their
+    // sidebar avatar updates live too — reuses USER_ONLINE, which the client
+    // already handles by updating the photo (and, as a side effect, marking
+    // this user online; acceptable since editing your profile requires an
+    // active connection anyway)
+    if (!patch.profilePicUrl.empty() && server_) {
+        Message photoUpdate;
+        photoUpdate.type            = MessageType::USER_ONLINE;
+        photoUpdate.sender.userId   = updated->userId;
+        photoUpdate.sender.username = updated->username;
+        photoUpdate.displayName     = updated->displayName;
+        photoUpdate.profilePicUrl   = updated->profilePicUrl;
+        server_->broadcast(photoUpdate, sender);
+    }
+
     Message resp;
-    resp.type = MessageType::PROFILE_EDIT;
-    resp.text = "Profile updated successfully";
+    resp.type          = MessageType::PROFILE_EDIT;
+    resp.text          = "Profile updated successfully";
+    resp.sender.userId = updated->userId;
+    resp.username      = updated->username;
+    resp.displayName   = updated->displayName;
+    resp.role          = roleToString(updated->role);
+    resp.bio           = updated->bio;
+    resp.profilePicUrl = updated->profilePicUrl;
+    resp.email         = updated->email;
+    resp.universityId  = updated->universityId;
+    resp.major         = updated->major;
+    resp.year          = yearToString(updated->year);
+    resp.interests     = updated->interests;
     sender->send(resp);
 }
 

@@ -90,6 +90,7 @@ int main()
         marketplace.setServer(server);
         opportunity.setServer(server);
         forum.setServer(server);
+        profile.setServer(server); 
         fileStorage.setServer(server);
         dispatcher.setServer(server);
 
