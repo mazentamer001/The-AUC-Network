@@ -116,27 +116,30 @@ void MainWindow::onMessage(const Message& msg)
     switch (msg.type)
     {
     case MessageType::AUTH_RESPONSE:
-        if (!msg.token.empty()) {
-            token_       = QString::fromStdString(msg.token);
-            userId_      = QString::fromStdString(msg.sender.userId);
-            displayName_ = QString::fromStdString(msg.displayName);
-            username_    = QString::fromStdString(msg.sender.username);
-            if (userId_.isEmpty())   userId_   = token_;
-            if (username_.isEmpty()) username_ = displayName_;
-            mainShell_->setCurrentUser(displayName_, userId_, username_, token_);
-            showShell();
-        } else if (!token_.isEmpty()) {
-            if (msg.text.find("logged out") != std::string::npos) {
-                token_.clear();
-                QMessageBox::information(this, "Session Ended", QString::fromStdString(msg.text));
-                showHome();
-            }
+     if (!msg.token.empty()) {
+         token_       = QString::fromStdString(msg.token);
+         userId_      = QString::fromStdString(msg.sender.userId);
+         displayName_ = QString::fromStdString(msg.displayName);
+         username_    = QString::fromStdString(msg.sender.username);
+         if (userId_.isEmpty())   userId_   = token_;
+         if (username_.isEmpty()) username_ = displayName_;
+         mainShell_->setCurrentUser(displayName_, userId_, username_, token_);
+         showShell();
+    } else {
+        std::string lowerText = msg.text;
+        std::transform(lowerText.begin(), lowerText.end(), lowerText.begin(), ::tolower);
+
+        if (lowerText.find("logged out") != std::string::npos) {
+            token_.clear();
+            QMessageBox::information(this, "Session Ended", QString::fromStdString(msg.text));
+            showHome();
         } else {
             QMessageBox::information(this, "Account Created",
                 "Registration successful!\nYou can now sign in.");
             showLogin();
         }
-        break;
+    }
+    break;
 
     case MessageType::ERROR:
         mainShell_->routeMessage(msg);

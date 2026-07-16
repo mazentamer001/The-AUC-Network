@@ -28,10 +28,12 @@ void sendMessage(const Message& msg);
 private slots:
 void onSaveProfile();
 void onChangePassword();
+void onChoosePhoto();
 
 private:
 void requestProfile();
 void populateFields(const Message& msg);
+void renderAvatar(const QString& data);   // data is either an http(s) URL or raw base64 image bytes
 
     // display
     QLabel* avatarLabel_;
@@ -39,12 +41,12 @@ void populateFields(const Message& msg);
     QLabel* roleLabel_;
     QLabel* emailLabel_;
     QLabel* uniIdLabel_;
+    QLabel* photoStatusLabel_;
 
     // editable
     QLineEdit* displayNameInput_;
     QLineEdit* usernameInput_;
     QLineEdit* bioInput_;
-    QLineEdit* profilePicInput_;
     QLineEdit* majorInput_;
     QComboBox* yearInput_;
     QLineEdit* interestsInput_;
@@ -57,7 +59,8 @@ void populateFields(const Message& msg);
     QString token_;
     QString userId_;
     QString currentUsername_;
+    QString pendingImageBase64_;   // set when a new photo is picked; empty = no change on save
+    QString currentPhotoData_;     // whatever we last loaded/set, for reference
 
     QNetworkAccessManager* netManager_ = nullptr;
-void loadAvatarFromUrl(const QString& url);
 };

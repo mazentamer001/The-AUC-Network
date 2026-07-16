@@ -174,6 +174,8 @@ void MainShell::routeMessage(const Message& msg)
     {
     case MessageType::CHAT_PUBLIC:
     case MessageType::CHAT_PRIVATE:
+    case MessageType::CHAT_CREATE:
+    case MessageType::CHAT_HISTORY:
     case MessageType::JOIN:
     case MessageType::AI_SUMMARIZE_RESPONSE:
         chatPanel_->receiveMessage(msg);
@@ -191,18 +193,24 @@ void MainShell::routeMessage(const Message& msg)
         QString displayName = QString::fromStdString(msg.displayName);
         QString username    = QString::fromStdString(msg.sender.username);
         QString bio         = QString::fromStdString(msg.bio);
+        QString photo       = QString::fromStdString(msg.profilePicUrl);
         if (!userId.isEmpty())
-            chatPanel_->addOnlineUser(userId, displayName, username, bio);
+            chatPanel_->addOnlineUser(userId, displayName, username, bio, photo);
         break;
     }
 
      
     case MessageType::USER_ONLINE: {
-        QString uid = QString::fromStdString(msg.sender.userId);
+        QString uid   = QString::fromStdString(msg.sender.userId);
+        QString photo = QString::fromStdString(msg.profilePicUrl);
+        // addOnlineUser no-ops if the card already exists, so also push the
+        // photo explicitly in case this user updated their picture since
+        // their card was first created
         chatPanel_->addOnlineUser(uid,
             QString::fromStdString(msg.displayName),
             QString::fromStdString(msg.sender.username),
-            QString::fromStdString(msg.bio));
+            QString::fromStdString(msg.bio), photo);
+        chatPanel_->setUserPhoto(uid, photo);
         chatPanel_->setUserStatus(uid, UserStatus::ONLINE);
         break;
     }
@@ -232,6 +240,7 @@ void MainShell::routeMessage(const Message& msg)
         oppPanel_->receiveMessage(msg);
         break;
 
+
     case MessageType::MATERIAL_UPLOAD:
     case MessageType::MATERIAL_LIST:
     case MessageType::MATERIAL_GET:
@@ -251,7 +260,12 @@ void MainShell::routeMessage(const Message& msg)
 
     case MessageType::PROFILE_GET:
     case MessageType::PROFILE_EDIT:
+    
         profilePanel_->receiveMessage(msg);
+        break;
+    
+    case MessageType::PROFILE_VIEW:
+        chatPanel_->receiveMessage(msg);
         break;
 
     default:

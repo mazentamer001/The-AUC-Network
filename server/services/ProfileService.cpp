@@ -112,3 +112,25 @@ void ProfileService::sendError(const std::string& reason, std::shared_ptr<Sessio
     Message m; m.type = MessageType::ERROR; m.text = reason;
     sender->send(m);
 }
+
+//view someone else's profile — public-safe subset only, no email/universityId/password
+void ProfileService::handleView(const Message& msg, std::shared_ptr<Session> sender)
+{
+    if (msg.recipientId.empty()) { sendError("recipientId is required", sender); return; }
+
+    auto userOpt = store_.findUserById(msg.recipientId);
+    if (!userOpt) { sendError("User not found", sender); return; }
+
+    Message resp;
+    resp.type           = MessageType::PROFILE_VIEW;
+    resp.sender.userId  = userOpt->userId;
+    resp.displayName    = userOpt->displayName;
+    resp.username       = userOpt->username;
+    resp.bio            = userOpt->bio;
+    resp.profilePicUrl  = userOpt->profilePicUrl;
+    resp.major          = userOpt->major;
+    resp.year           = yearToString(userOpt->year);
+    resp.interests      = userOpt->interests;
+    // deliberately omitted: email, universityId, password, role
+    sender->send(resp);
+}

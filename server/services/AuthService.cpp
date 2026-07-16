@@ -130,6 +130,7 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
         presence.sender.username = u.username;
         presence.displayName     = u.displayName;
         presence.bio             = u.bio;
+        presence.profilePicUrl   = u.profilePicUrl;
         sender->send(presence);
     }
 
@@ -153,7 +154,7 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
         sender->send(roomMsg);
     }
 
-   if (server_) {
+    if (server_) {
         auto onlineUsers = server_->getOnlineUserIds();
         for (auto& uid : onlineUsers) {
             if (uid == sender->userId()) continue;
@@ -165,6 +166,7 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
             statusMsg.sender.userId   = userOpt->userId;
             statusMsg.sender.username = userOpt->username;
             statusMsg.displayName     = userOpt->displayName;
+            statusMsg.profilePicUrl   = userOpt->profilePicUrl;
             sender->send(statusMsg);
         }
     }
@@ -175,6 +177,7 @@ void AuthService::handleLogin(const Message& msg, std::shared_ptr<Session> sende
     online.sender.userId   = userOpt->userId;
     online.sender.username = userOpt->username;
     online.displayName     = userOpt->displayName;
+    online.profilePicUrl   = userOpt->profilePicUrl;
     if (server_) server_->broadcast(online, sender);
 
     // 3. Send new client their own USER_ONLINE so their dot shows green too

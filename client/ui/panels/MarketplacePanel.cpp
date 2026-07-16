@@ -10,6 +10,10 @@
 #include <QScrollArea>
 #include <QMouseEvent>
 #include <QMessageBox>
+#include <QFileDialog>
+#include <QFile>
+#include <QFileInfo>
+#include <QPixmap>
 #include "ui/theme/Theme.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,7 +21,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 ListingCard::ListingCard(const QString& id, const QString& title,
                          const QString& price, const QString& seller,
-                         const QString& description, QWidget* parent)
+                         const QString& description, const QString& imageData,
+                         QWidget* parent)
     : QWidget(parent), id_(id)
 {
     setFixedSize(220, 190);
@@ -34,9 +39,20 @@ ListingCard::ListingCard(const QString& id, const QString& title,
 
     auto* imgPlaceholder = new QLabel;
     imgPlaceholder->setFixedHeight(70);
+    imgPlaceholder->setAlignment(Qt::AlignCenter);
     imgPlaceholder->setStyleSheet(QString(
         "background: %1; border-radius: 8px; border: none;"
     ).arg(Theme::SURFACE_ALT));
+
+    if (!imageData.isEmpty()) {
+        QPixmap pix;
+        if (pix.loadFromData(QByteArray::fromBase64(imageData.toUtf8()))) {
+            imgPlaceholder->setPixmap(pix.scaled(
+                imgPlaceholder->width(), imgPlaceholder->height(),
+                Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+            imgPlaceholder->setScaledContents(false);
+        }
+    }
 
     auto* titleLbl = new QLabel(title);
     titleLbl->setStyleSheet(QString("border: none; background: transparent; color: %1; font-weight: 500; font-size: 13px;").arg(Theme::TEXT_PRIMARY));
@@ -110,10 +126,20 @@ PostListingPanel::PostListingPanel(QWidget* parent) : QWidget(parent)
     form->addWidget(price_);
     form->addSpacing(10);
 
-    addLabel("Photo URL");
-    mediaUrl_ = new QLineEdit; mediaUrl_->setPlaceholderText("https://...");
-    mediaUrl_->setStyleSheet(Theme::textInput()); mediaUrl_->setFixedHeight(38);
-    form->addWidget(mediaUrl_);
+    addLabel("Photo");
+    auto* photoRow = new QHBoxLayout;
+    photoRow->setSpacing(8);
+    photoStatusLabel_ = new QLabel("No photo selected");
+    photoStatusLabel_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
+    auto* btnChoosePhoto = new QPushButton("Choose photo...");
+    btnChoosePhoto->setFixedHeight(38);
+    btnChoosePhoto->setStyleSheet(QString(
+        "QPushButton { background: %1; color: %2; border: 1px solid %3; border-radius: 8px; padding: 0 14px; font-size: 12px; font-weight: 500; }"
+        "QPushButton:hover { background: %4; }"
+    ).arg(Theme::SURFACE_ALT, Theme::TEXT_PRIMARY, Theme::BORDER, Theme::SURFACE));
+    photoRow->addWidget(photoStatusLabel_, 1);
+    photoRow->addWidget(btnChoosePhoto);
+    form->addLayout(photoRow);
     form->addSpacing(10);
 
     addLabel("Description");
@@ -131,8 +157,34 @@ PostListingPanel::PostListingPanel(QWidget* parent) : QWidget(parent)
 
     outer->addWidget(card);
 
-    connect(btnSubmit, &QPushButton::clicked, this, &PostListingPanel::onSubmit);
-    connect(btnBack,   &QPushButton::clicked, this, &PostListingPanel::cancelled);
+    connect(btnSubmit,      &QPushButton::clicked, this, &PostListingPanel::onSubmit);
+    connect(btnBack,        &QPushButton::clicked, this, &PostListingPanel::cancelled);
+    connect(btnChoosePhoto, &QPushButton::clicked, this, &PostListingPanel::onChoosePhoto);
+}
+
+void PostListingPanel::onChoosePhoto()
+{
+    QString path = QFileDialog::getOpenFileName(this, "Choose listing photo", QString(),
+                                                  "Images (*.png *.jpg *.jpeg *.gif)");
+    if (path.isEmpty()) return;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, "Read error", "Could not read the selected image.");
+        return;
+    }
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    if (fileData.size() > 500 * 1024) {
+        QMessageBox::warning(this, "Image too large", "Photos must be under 500KB.");
+        return;
+    }
+
+    pendingImageBase64_ = QString::fromLatin1(fileData.toBase64());
+
+    QFileInfo info(path);
+    photoStatusLabel_->setText("Selected: " + info.fileName());
 }
 
 void PostListingPanel::onSubmit()
@@ -145,12 +197,14 @@ void PostListingPanel::onSubmit()
     msg.type            = MessageType::MARKET_POST;
     msg.title           = title_->text().trimmed().toStdString();
     msg.price           = price_->text().trimmed().toStdString();
-    msg.mediaUrl        = mediaUrl_->text().trimmed().toStdString();
+    msg.mediaUrl        = pendingImageBase64_.toStdString();
     msg.text            = description_->toPlainText().trimmed().toStdString();
     msg.sender.username = displayName_.toStdString();
     emit submitted(msg);
 
-    title_->clear(); price_->clear(); mediaUrl_->clear(); description_->clear();
+    title_->clear(); price_->clear(); description_->clear();
+    pendingImageBase64_.clear();
+    photoStatusLabel_->setText("No photo selected");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,10 +236,11 @@ ListingDetailPanel::ListingDetailPanel(QWidget* parent) : QWidget(parent)
     layout->setContentsMargins(32, 32, 32, 32);
     layout->setSpacing(10);
 
-    auto* img = new QLabel;
-    img->setFixedHeight(160);
-    img->setStyleSheet(QString("background: %1; border-radius: 8px; border: none;").arg(Theme::SURFACE_ALT));
-    layout->addWidget(img);
+    img_ = new QLabel;
+    img_->setFixedHeight(160);
+    img_->setAlignment(Qt::AlignCenter);
+    img_->setStyleSheet(QString("background: %1; border-radius: 8px; border: none;").arg(Theme::SURFACE_ALT));
+    layout->addWidget(img_);
 
     title_ = new QLabel;
     title_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::heading()));
@@ -232,7 +287,8 @@ ListingDetailPanel::ListingDetailPanel(QWidget* parent) : QWidget(parent)
 
 void ListingDetailPanel::show(const QString& id, const QString& title,
                                const QString& price, const QString& seller,
-                               const QString& sellerId, const QString& description)
+                               const QString& sellerId, const QString& description,
+                               const QString& imageData)
 {
     currentId_       = id;
     currentTitle_    = title;
@@ -242,6 +298,16 @@ void ListingDetailPanel::show(const QString& id, const QString& title,
     price_->setText(price);
     seller_->setText("Sold by " + seller);
     description_->setText(description.isEmpty() ? "No description provided." : description);
+
+    img_->setPixmap(QPixmap());
+    if (!imageData.isEmpty()) {
+        QPixmap pix;
+        if (pix.loadFromData(QByteArray::fromBase64(imageData.toUtf8()))) {
+            img_->setPixmap(pix.scaled(img_->width(), img_->height(),
+                Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+        }
+    }
+
     QWidget::show();
 }
 
@@ -356,7 +422,7 @@ void MarketplacePanel::onCardClicked(const QString& id)
 {
     if (!listings_.contains(id)) return;
     auto& l = listings_[id];
-    detailPanel_->show(l.id, l.title, l.price, l.seller, l.sellerId, l.description);
+    detailPanel_->show(l.id, l.title, l.price, l.seller, l.sellerId, l.description, l.imageData);
     stack_->setCurrentIndex(2);
 }
 
@@ -367,7 +433,7 @@ void MarketplacePanel::onSearch()
     for (auto& l : listings_) {
         if (query.isEmpty() || l.title.toLower().contains(query) ||
             l.description.toLower().contains(query)) {
-            addCard(l.id, l.title, l.price, l.seller, l.sellerId, l.description);
+            addCard(l.id, l.title, l.price, l.seller, l.sellerId, l.description, l.imageData);
         }
     }
 }
@@ -382,12 +448,13 @@ void MarketplacePanel::clearGrid()
 
 void MarketplacePanel::addCard(const QString& id, const QString& title,
                                 const QString& price, const QString& seller,
-                                const QString& sellerId, const QString& description)
+                                const QString& sellerId, const QString& description,
+                                const QString& imageData)
 {
     int count = grid_->count();
     int col   = count % 4;
     int row   = count / 4;
-    auto* card = new ListingCard(id, title, price, seller, description);
+    auto* card = new ListingCard(id, title, price, seller, description, imageData);
     connect(card, &ListingCard::clicked, this, &MarketplacePanel::onCardClicked);
     grid_->addWidget(card, row, col);
 }
@@ -402,10 +469,11 @@ void MarketplacePanel::receiveMessage(const Message& msg)
         QString seller = QString::fromStdString(msg.sender.username);
         QString selId  = QString::fromStdString(msg.sender.userId);
         QString desc   = QString::fromStdString(msg.text);
+        QString imgData = QString::fromStdString(msg.mediaUrl);
 
         if (id.isEmpty() || title.isEmpty()) return;
 
-        listings_[id] = {id, title, price, seller, selId, desc};
+        listings_[id] = {id, title, price, seller, selId, desc, imgData};
 
         auto existing = gridWidget_->findChildren<ListingCard*>();
         for (auto* c : existing)
@@ -418,7 +486,7 @@ void MarketplacePanel::receiveMessage(const Message& msg)
             }
         }
 
-        addCard(id, title, price, seller, selId, desc);
+        addCard(id, title, price, seller, selId, desc, imgData);
     }
 
     if (msg.type == MessageType::MARKET_INQUIRY) {

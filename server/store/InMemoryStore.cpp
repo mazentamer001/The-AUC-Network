@@ -24,7 +24,7 @@ std::optional<ChatRoom> InMemoryStore::findRoom(const std::string& id)        { 
 bool InMemoryStore::addMemberToRoom(const std::string& r, const std::string& u) { return db_->addMemberToRoom(r, u); }
 bool InMemoryStore::isMember(const std::string& r, const std::string& u)     { return db_->isMember(r, u); }
 bool InMemoryStore::addMessageToRoom(const std::string& r, const ChatMessage& m) { return db_->addMessageToRoom(r, m); }
-std::vector<ChatMessage> InMemoryStore::getRoomHistory(const std::string& id) { return db_->getRoomHistory(id); }
+std::vector<ChatMessage> InMemoryStore::getRoomHistory(const std::string& id, int limit) { return db_->getRoomHistory(id, limit); }
 std::vector<ChatRoom> InMemoryStore::getPublicRooms()                         { return db_->getPublicRooms(); }
 std::vector<ChatRoom> InMemoryStore::getRoomsForUser(const std::string& userId) { return db_->getRoomsForUser(userId); }
 

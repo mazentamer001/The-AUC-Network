@@ -80,6 +80,11 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
     case MessageType::AI_SUMMARIZE_REQUEST:
         ai_.handleSummarize(msg, sender);          break;
 
+
+    case MessageType::PROFILE_VIEW:
+        profile_.handleView(msg, sender);          break;
+
+
     // ── marketplace ───────────────────────────────────────────────────────
     case MessageType::MARKET_POST:
         marketplace_.handlePost(msg, sender);      break;
@@ -116,7 +121,10 @@ void Dispatcher::dispatch(const Message& msg, std::shared_ptr<Session> sender)
         forum_.handleVote(msg, sender);          break;
     case MessageType::QA_GET_ONE:
         forum_.handleGetOne(msg, sender);          break;
-
+    case MessageType::QA_GET_FAQ:
+        forum_.handleGetFaq(msg, sender);
+        break;
+        
     // ── files ─────────────────────────────────────────────────────────────
     case MessageType::MATERIAL_UPLOAD:
         fileStorage_.handleUpload(msg, sender);    break;

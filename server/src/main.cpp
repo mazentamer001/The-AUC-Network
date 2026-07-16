@@ -89,6 +89,8 @@ int main()
         chat.setServer(server);
         marketplace.setServer(server);
         opportunity.setServer(server);
+        forum.setServer(server);
+        fileStorage.setServer(server);
         dispatcher.setServer(server);
 
         std::cout << "Server ready on port 12345\n";

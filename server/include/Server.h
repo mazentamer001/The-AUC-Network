@@ -39,6 +39,7 @@ public:
     std::vector<std::string> getOnlineUserIds();
     void setUserAway(const std::string& userId, bool away);
     bool isUserAway(const std::string& userId);
+    void sendToRoom(const std::vector<std::string>& memberIds, const Message& msg, std::shared_ptr<Session> exclude);
 
 private:
     void do_accept();

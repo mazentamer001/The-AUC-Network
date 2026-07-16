@@ -10,6 +10,10 @@
 #include <QScrollArea>
 #include <QMessageBox>
 #include <QTimer>
+#include <QFileDialog>
+#include <QFile>
+#include <QFileInfo>
+#include <QPixmap>
 #include <iostream>
 
 ProfilePanel::ProfilePanel(QWidget* parent) : QWidget(parent)
@@ -123,12 +127,20 @@ ProfilePanel::ProfilePanel(QWidget* parent) : QWidget(parent)
     editLayout->addWidget(bioInput_);
     editLayout->addSpacing(8);
 
-    editLayout->addWidget(lbl("Profile picture URL"));
-    profilePicInput_ = new QLineEdit;
-    profilePicInput_->setPlaceholderText("https://...");
-    profilePicInput_->setFixedHeight(36);
-    profilePicInput_->setStyleSheet(Theme::textInput());
-    editLayout->addWidget(profilePicInput_);
+    editLayout->addWidget(lbl("Profile picture"));
+    auto* picRow = new QHBoxLayout;
+    picRow->setSpacing(8);
+    photoStatusLabel_ = new QLabel("No photo selected");
+    photoStatusLabel_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
+    auto* btnChoosePhoto = new QPushButton("Choose photo...");
+    btnChoosePhoto->setFixedHeight(36);
+    btnChoosePhoto->setStyleSheet(QString(
+        "QPushButton { background: %1; color: %2; border: 1px solid %3; border-radius: 8px; padding: 0 14px; font-size: 12px; font-weight: 500; }"
+        "QPushButton:hover { background: %4; }"
+    ).arg(Theme::SURFACE_ALT, Theme::TEXT_PRIMARY, Theme::BORDER, Theme::SURFACE));
+    picRow->addWidget(photoStatusLabel_, 1);
+    picRow->addWidget(btnChoosePhoto);
+    editLayout->addLayout(picRow);
     editLayout->addSpacing(8);
 
     editLayout->addWidget(lbl("Major"));
@@ -218,28 +230,78 @@ ProfilePanel::ProfilePanel(QWidget* parent) : QWidget(parent)
     root->setContentsMargins(0, 0, 0, 0);
     root->addWidget(scroll);
 
-    connect(btnSave, &QPushButton::clicked, this, &ProfilePanel::onSaveProfile);
-    connect(btnPass, &QPushButton::clicked, this, &ProfilePanel::onChangePassword);
+    connect(btnSave,        &QPushButton::clicked, this, &ProfilePanel::onSaveProfile);
+    connect(btnPass,        &QPushButton::clicked, this, &ProfilePanel::onChangePassword);
+    connect(btnChoosePhoto, &QPushButton::clicked, this, &ProfilePanel::onChoosePhoto);
 }
 
-void ProfilePanel::loadAvatarFromUrl(const QString& url)
+void ProfilePanel::renderAvatar(const QString& data)
 {
-    QNetworkRequest req{QUrl(url)};
-    QNetworkReply* reply = netManager_->get(req);
+    if (data.isEmpty()) {
+        avatarLabel_->setPixmap(QPixmap());
+        QString u = usernameDisplay_->text();
+        avatarLabel_->setText(u.isEmpty() ? "?" : QString(u[0].toUpper()));
+        return;
+    }
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        reply->deleteLater();
-        if (reply->error() != QNetworkReply::NoError) {
-            std::cerr << "Avatar load failed: " << reply->errorString().toStdString() << "\n";
-            return;
-        }
-        QByteArray data = reply->readAll();
-        QPixmap pix;
-        if (pix.loadFromData(data)) {
-            avatarLabel_->setPixmap(pix.scaled(
-                avatarLabel_->size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
-        }
-    });
+    if (data.startsWith("http://") || data.startsWith("https://")) {
+        // legacy/manual external URL — fetch over the network
+        QNetworkRequest req{QUrl(data)};
+        QNetworkReply* reply = netManager_->get(req);
+        connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+            reply->deleteLater();
+            if (reply->error() != QNetworkReply::NoError) {
+                std::cerr << "Avatar load failed: " << reply->errorString().toStdString() << "\n";
+                return;
+            }
+            QPixmap pix;
+            if (pix.loadFromData(reply->readAll())) {
+                avatarLabel_->setPixmap(pix.scaled(
+                    avatarLabel_->size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+            }
+        });
+        return;
+    }
+
+    // otherwise treat the whole string as raw base64 image bytes — decode locally, no network needed
+    QByteArray decoded = QByteArray::fromBase64(data.toUtf8());
+    QPixmap pix;
+    if (pix.loadFromData(decoded)) {
+        avatarLabel_->setPixmap(pix.scaled(
+            avatarLabel_->size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+    }
+}
+
+void ProfilePanel::onChoosePhoto()
+{
+    QString path = QFileDialog::getOpenFileName(this, "Choose profile picture", QString(),
+                                                  "Images (*.png *.jpg *.jpeg *.gif)");
+    if (path.isEmpty()) return;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, "Read error", "Could not read the selected image.");
+        return;
+    }
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    if (fileData.size() > 500 * 1024) {
+        QMessageBox::warning(this, "Image too large", "Profile pictures must be under 500KB.");
+        return;
+    }
+
+    pendingImageBase64_ = QString::fromLatin1(fileData.toBase64());
+
+    // instant local preview
+    QPixmap pix;
+    if (pix.loadFromData(fileData)) {
+        avatarLabel_->setPixmap(pix.scaled(
+            avatarLabel_->size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+    }
+
+    QFileInfo info(path);
+    photoStatusLabel_->setText("Selected: " + info.fileName() + " (saved on submit)");
 }
 
 void ProfilePanel::setCurrentUser(const QString& displayName, const QString& userId,
@@ -281,7 +343,7 @@ void ProfilePanel::populateFields(const Message& msg)
     QString username    = QString::fromStdString(msg.username);
     QString displayName = QString::fromStdString(msg.displayName);
     QString bio         = QString::fromStdString(msg.bio);
-    QString picUrl      = QString::fromStdString(msg.profilePicUrl);
+    QString picData      = QString::fromStdString(msg.profilePicUrl);
     QString role        = QString::fromStdString(msg.role);
     QString email       = QString::fromStdString(msg.email);
     QString uniId       = QString::fromStdString(msg.universityId);
@@ -293,7 +355,6 @@ void ProfilePanel::populateFields(const Message& msg)
     if (!displayName.isEmpty()) displayNameInput_->setText(displayName);
     if (!username.isEmpty())    usernameInput_->setText(username);
     if (!bio.isEmpty())         bioInput_->setText(bio);
-    if (!picUrl.isEmpty())      profilePicInput_->setText(picUrl);
     if (!role.isEmpty())        roleLabel_->setText(role);
     if (!email.isEmpty())       emailLabel_->setText(email);
     if (!uniId.isEmpty())       uniIdLabel_->setText(uniId);
@@ -301,12 +362,9 @@ void ProfilePanel::populateFields(const Message& msg)
     if (!year.isEmpty())        yearInput_->setCurrentText(year);
     if (!interests.isEmpty())   interestsInput_->setText(interests);
 
-    if (picUrl.isEmpty()) {
-        avatarLabel_->setPixmap(QPixmap());
-        avatarLabel_->setText(username.isEmpty() ? "?" : QString(username[0].toUpper()));
-    } else {
-        loadAvatarFromUrl(picUrl);
-    }
+    currentPhotoData_ = picData;
+    photoStatusLabel_->setText(picData.isEmpty() ? "No photo selected" : "Current photo set");
+    renderAvatar(picData);
 }
 
 void ProfilePanel::onSaveProfile()
@@ -322,11 +380,15 @@ void ProfilePanel::onSaveProfile()
     msg.displayName   = displayNameInput_->text().trimmed().toStdString();
     msg.username      = usernameInput_->text().trimmed().toStdString();
     msg.bio           = bioInput_->text().trimmed().toStdString();
-    msg.profilePicUrl = profilePicInput_->text().trimmed().toStdString();
+    // only send a new photo if one was actually picked this session — empty
+    // means "leave unchanged" per ProfileService::handleEdit's patch logic
+    msg.profilePicUrl = pendingImageBase64_.toStdString();
     msg.major         = majorInput_->text().trimmed().toStdString();
     msg.year          = yearInput_->currentText().toStdString();
     msg.interests     = interestsInput_->text().trimmed().toStdString();
     emit sendMessage(msg);
+
+    pendingImageBase64_.clear();
 }
 
 void ProfilePanel::onChangePassword()

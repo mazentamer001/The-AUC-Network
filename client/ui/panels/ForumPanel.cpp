@@ -417,82 +417,7 @@ void QuestionDetailPanel::updateAnswerVotes(const QString& answerId, int up, int
         answerWidgets_[answerId]->updateVotes(up, down);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  FaqPanel
-// ─────────────────────────────────────────────────────────────────────────────
-FaqPanel::FaqPanel(QWidget* parent) : QWidget(parent)
-{
-    setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(QString("FaqPanel { %1 }").arg(Theme::pageBackground()));
 
-    auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(50, 32, 50, 32);
-    root->setSpacing(16);
-
-    auto* btnBack = new QPushButton("Back to forum");
-    btnBack->setFlat(true);
-    btnBack->setStyleSheet(backLinkStyle());
-
-    auto* title = new QLabel("Frequently asked questions");
-    title->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::heading()));
-
-    auto* scroll = new QScrollArea;
-    scroll->setWidgetResizable(true);
-    scroll->setStyleSheet(QString(
-        "QScrollArea { border: none; background: transparent; }"
-        "QScrollBar:vertical { background: transparent; width: 6px; }"
-        "QScrollBar::handle:vertical { background: %1; border-radius: 3px; }"
-    ).arg(Theme::BORDER));
-
-    auto* container = new QWidget;
-    container->setStyleSheet("background: transparent;");
-    layout_ = new QVBoxLayout(container);
-    layout_->setContentsMargins(0, 0, 0, 0);
-    layout_->setSpacing(12);
-    layout_->setAlignment(Qt::AlignTop);
-    scroll->setWidget(container);
-
-    root->addWidget(btnBack, 0, Qt::AlignLeft);
-    root->addWidget(title);
-    root->addWidget(scroll, 1);
-
-    connect(btnBack, &QPushButton::clicked, this, &FaqPanel::backClicked);
-}
-
-void FaqPanel::addFaqAnswer(const QString& questionTitle,
-                             const QString& answerText, const QString& author)
-{
-    auto* card = new QWidget;
-    card->setObjectName("faqCard");
-    card->setStyleSheet(QString("#faqCard { background: %1; border: 2px solid %2; border-radius: 12px; }").arg(Theme::SURFACE, FAQ_GOLD));
-    auto* l = new QVBoxLayout(card);
-    l->setContentsMargins(20, 16, 20, 16);
-    l->setSpacing(8);
-
-    auto* qLbl = new QLabel("Q: " + questionTitle);
-    qLbl->setStyleSheet(QString("border: none; background: transparent; color: %1; font-size: 13px; font-weight: 600;").arg(FAQ_GOLD));
-    qLbl->setWordWrap(true);
-
-    auto* aLbl = new QLabel("A: " + answerText);
-    aLbl->setWordWrap(true);
-    aLbl->setStyleSheet(QString("border: none; background: transparent; color: %1; font-size: 13px;").arg(Theme::TEXT_PRIMARY));
-
-    auto* authorLbl = new QLabel(author);
-    authorLbl->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
-
-    l->addWidget(qLbl);
-    l->addWidget(aLbl);
-    l->addWidget(authorLbl);
-    layout_->addWidget(card);
-}
-
-void FaqPanel::clear()
-{
-    while (QLayoutItem* item = layout_->takeAt(0)) {
-        if (item->widget()) item->widget()->deleteLater();
-        delete item;
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ForumPanel
@@ -579,6 +504,11 @@ ForumPanel::ForumPanel(QWidget* parent) : QWidget(parent)
     connect(btnAsk,  &QPushButton::clicked, this, &ForumPanel::showPost);
     connect(btnFaq,  &QPushButton::clicked, this, &ForumPanel::showFaq);
     connect(searchBar_, &QLineEdit::textChanged, this, &ForumPanel::onSearch);
+    connect(faqPanel_, &FaqPanel::backClicked,     this, &ForumPanel::showBrowse);
+    connect(faqPanel_, &FaqPanel::questionClicked, this, &ForumPanel::onQuestionClicked);
+    connect(faqPanel_, &FaqPanel::upvoteClicked,   this, [this](const QString& qId){ sendVote(qId, "", true); });
+    connect(faqPanel_, &FaqPanel::downvoteClicked, this, [this](const QString& qId){ sendVote(qId, "", false); });
+
 
     connect(postPanel_, &PostQuestionPanel::submitted, this, [this](const Message& msg){
         emit sendMessage(msg);
@@ -624,8 +554,13 @@ void ForumPanel::requestQuestions()
 }
 
 void ForumPanel::showPost()    { stack_->setCurrentIndex(1); }
-void ForumPanel::showBrowse()  { stack_->setCurrentIndex(0); }
-void ForumPanel::showFaq()     { stack_->setCurrentIndex(3); }
+void ForumPanel::showBrowse()
+{
+    stack_->setCurrentIndex(0);
+    clearCards();
+    requestQuestions();
+}
+
 
 void ForumPanel::onQuestionClicked(const QString& id)
 {
@@ -695,7 +630,7 @@ void ForumPanel::receiveMessage(const Message& msg)
     {
         QString id        = QString::fromStdString(msg.parentId);
         QString title     = QString::fromStdString(msg.title);
-        QString text      = QString::fromStdString(msg.text);
+        QString text       = QString::fromStdString(msg.text);
         QString author    = QString::fromStdString(msg.sender.username);
         QString timestamp = QString::fromStdString(msg.timestamp);
 
@@ -712,10 +647,24 @@ void ForumPanel::receiveMessage(const Message& msg)
         }
 
         if (id.isEmpty() || title.isEmpty()) return;
-        if (questions_.contains(id)) return;
 
-        questions_[id] = {id, title, text, author, timestamp, 0, 0, 0};
-        addQuestionCard(id, title, text, author, timestamp, 0, 0, 0);
+        int up = 0, down = 0;
+        QString role = QString::fromStdString(msg.role);
+        QStringList roleParts = role.split(":");
+        if (roleParts.size() == 2) { up = roleParts[0].toInt(); down = roleParts[1].toInt(); }
+
+        if (questions_.contains(id)) {
+            // already known — refresh votes in case this fetch has newer data
+            questions_[id].upvotes   = up;
+            questions_[id].downvotes = down;
+            if (cards_.contains(id))
+                cards_[id]->updateVotes(up, down);
+            return;
+        }
+
+        int answerCount = questions_.contains(id) ? questions_[id].answerCount : 0;
+        questions_[id] = {id, title, text, author, timestamp, up, down, answerCount};
+        addQuestionCard(id, title, text, author, timestamp, up, down, answerCount);
         return;
     }
 
@@ -725,7 +674,6 @@ void ForumPanel::receiveMessage(const Message& msg)
         QString aId    = QString::fromStdString(msg.filename);
         QString author = QString::fromStdString(msg.sender.username);
         QString text   = QString::fromStdString(msg.text);
-        bool    isFaq  = (msg.role == "FAQ");
 
         if (text == "vote_update") {
             QString role = QString::fromStdString(msg.role);
@@ -737,11 +685,14 @@ void ForumPanel::receiveMessage(const Message& msg)
 
         if (qId.isEmpty() || aId.isEmpty() || text.isEmpty()) return;
 
-        if (detailPanel_->currentQuestionId() == qId)
-            detailPanel_->addAnswer(qId, aId, author, text, 0, 0, isFaq);
+        QString roleStr = QString::fromStdString(msg.role);
+        QStringList roleParts = roleStr.split(":");
+        bool isFaq = (!roleParts.isEmpty() && roleParts[0] == "FAQ");
+        int up = 0, down = 0;
+        if (roleParts.size() == 3) { up = roleParts[1].toInt(); down = roleParts[2].toInt(); }
 
-        if (isFaq && questions_.contains(qId))
-            faqPanel_->addFaqAnswer(questions_[qId].title, text, author);
+        if (detailPanel_->currentQuestionId() == qId)
+            detailPanel_->addAnswer(qId, aId, author, text, up, down, isFaq);
 
         if (questions_.contains(qId) && !knownAnswerIds_.contains(aId)) {
             knownAnswerIds_.insert(aId);
@@ -751,4 +702,110 @@ void ForumPanel::receiveMessage(const Message& msg)
         }
         return;
     }
+
+    // ── NEW: handle top-5-upvoted-questions response for the FAQ panel ────────
+    if (msg.type == MessageType::QA_FAQ)
+    {
+        if (!msg.title.empty())   // a real top-question entry, not a generic status message
+        {
+            QString id        = QString::fromStdString(msg.parentId);
+            QString title     = QString::fromStdString(msg.title);
+            QString text      = QString::fromStdString(msg.text);
+            QString author    = QString::fromStdString(msg.sender.username);
+            QString timestamp = QString::fromStdString(msg.timestamp);
+
+            int up = 0, down = 0;
+            QString role = QString::fromStdString(msg.role);
+            QStringList parts = role.split(":");
+            if (parts.size() == 2) { up = parts[0].toInt(); down = parts[1].toInt(); }
+
+            int answerCount = questions_.contains(id) ? questions_[id].answerCount : 0;
+            faqPanel_->addFaqQuestion(id, title, text, author, timestamp, up, down, answerCount);
+        }
+        return;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FaqPanel
+// ─────────────────────────────────────────────────────────────────────────────
+FaqPanel::FaqPanel(QWidget* parent) : QWidget(parent)
+{
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(QString("FaqPanel { %1 }").arg(Theme::pageBackground()));
+
+    auto* root = new QVBoxLayout(this);
+    root->setContentsMargins(50, 32, 50, 32);
+    root->setSpacing(16);
+
+    auto* btnBack = new QPushButton("Back to forum");
+    btnBack->setFlat(true);
+    btnBack->setStyleSheet(backLinkStyle());
+
+    auto* title = new QLabel("Top questions");
+    title->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::heading()));
+
+    auto* scroll = new QScrollArea;
+    scroll->setWidgetResizable(true);
+    scroll->setStyleSheet(QString(
+        "QScrollArea { border: none; background: transparent; }"
+        "QScrollBar:vertical { background: transparent; width: 6px; }"
+        "QScrollBar::handle:vertical { background: %1; border-radius: 3px; }"
+    ).arg(Theme::BORDER));
+
+    auto* container = new QWidget;
+    container->setStyleSheet("background: transparent;");
+    layout_ = new QVBoxLayout(container);
+    layout_->setContentsMargins(0, 0, 0, 0);
+    layout_->setSpacing(10);
+    layout_->setAlignment(Qt::AlignTop);
+
+    emptyLabel_ = new QLabel("No FAQ yet.");
+    emptyLabel_->setAlignment(Qt::AlignCenter);
+    emptyLabel_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
+    layout_->addWidget(emptyLabel_);
+
+    scroll->setWidget(container);
+
+    root->addWidget(btnBack, 0, Qt::AlignLeft);
+    root->addWidget(title);
+    root->addWidget(scroll, 1);
+
+    connect(btnBack, &QPushButton::clicked, this, &FaqPanel::backClicked);
+}
+
+void FaqPanel::addFaqQuestion(const QString& id, const QString& title, const QString& text,
+                               const QString& author, const QString& timestamp,
+                               int upvotes, int downvotes, int answerCount)
+{
+    emptyLabel_->setVisible(false);
+
+    auto* card = new QuestionCard(id, title, text, author, timestamp, upvotes, downvotes, answerCount);
+    layout_->addWidget(card);
+
+    connect(card, &QuestionCard::clicked,        this, &FaqPanel::questionClicked);
+    connect(card, &QuestionCard::upvoteClicked,   this, &FaqPanel::upvoteClicked);
+    connect(card, &QuestionCard::downvoteClicked, this, &FaqPanel::downvoteClicked);
+}
+
+void FaqPanel::clear()
+{
+    while (QLayoutItem* item = layout_->takeAt(0)) {
+        if (item->widget() && item->widget() != emptyLabel_) item->widget()->deleteLater();
+        delete item;
+    }
+    layout_->addWidget(emptyLabel_);
+    emptyLabel_->setVisible(true);
+}
+
+void ForumPanel::showFaq()
+{
+    faqPanel_->clear();
+    stack_->setCurrentIndex(3);
+
+    Message msg;
+    msg.type = MessageType::QA_GET_FAQ;
+    msg.token = token_.toStdString();
+    msg.sender.username = displayName_.toStdString();
+    emit sendMessage(msg);
 }

@@ -15,6 +15,7 @@ public:
     void handleFaq (const Message& msg, std::shared_ptr<Session> sender); // mark answer as FAQ
     void handleGetAll (const Message& msg, std::shared_ptr<Session> sender); // list all questions
     void handleGetOne (const Message& msg, std::shared_ptr<Session> sender); // get question + answers
+    void handleGetFaq (const Message& msg, std::shared_ptr<Session> sender);
     void handleVote (const Message& msg, std::shared_ptr<Session> sender);
     void setServer(Server& server) { server_ = &server; }
 

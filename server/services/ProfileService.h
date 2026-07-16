@@ -11,6 +11,7 @@ public:
 
     void handleGet (const Message& msg, std::shared_ptr<Session> sender);
     void handleEdit(const Message& msg, std::shared_ptr<Session> sender);
+    void handleView(const Message& msg, std::shared_ptr<Session> sender); 
 
 private:
     std::string hashPassword(const std::string& plain);

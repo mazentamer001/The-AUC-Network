@@ -37,8 +37,18 @@ CreateRoomDialog::CreateRoomDialog(const QMap<QString, QString>& availableUsers,
     publicRadio_  = new QRadioButton("Public");
     privateRadio_ = new QRadioButton("Private");
     publicRadio_->setChecked(true);
+    
+    publicRadio_->setCursor(Qt::PointingHandCursor);
+    privateRadio_->setCursor(Qt::PointingHandCursor);
 
-    QString radioStyle = QString("QRadioButton { color: %1; font-size: 13px; }").arg(Theme::TEXT_PRIMARY);
+    // Styled the radio indicators to fit the light purple/pink palette
+    QString radioStyle = QString(
+        "QRadioButton { color: %1; font-size: 13px; spacing: 8px; }"
+        "QRadioButton::indicator { width: 16px; height: 16px; border-radius: 8px; border: 1px solid %2; background: %3; }"
+        "QRadioButton::indicator:checked { background: %4; border: 1px solid %4; }"
+        "QRadioButton::indicator:hover { border: 1px solid %4; }"
+    ).arg(Theme::TEXT_PRIMARY, Theme::BORDER, Theme::SURFACE_ALT, Theme::ACCENT);
+
     publicRadio_->setStyleSheet(radioStyle);
     privateRadio_->setStyleSheet(radioStyle);
 
@@ -60,10 +70,14 @@ CreateRoomDialog::CreateRoomDialog(const QMap<QString, QString>& availableUsers,
     memberLabel_->setStyleSheet(QString("border:none; background:transparent; %1").arg(Theme::bodyText()));
 
     memberList_ = new QListWidget;
+    // Removed the dark #1e293b background. Replaced with Theme::SURFACE_ALT and styled checkbox indicators
     memberList_->setStyleSheet(QString(
-        "QListWidget { background: #1e293b; border: 1px solid %1; border-radius: 8px; color: %2; font-size: 13px; }"
-        "QListWidget::item { padding: 6px 8px; }"
-    ).arg(Theme::BORDER, Theme::TEXT_PRIMARY));
+        "QListWidget { background: %1; border: 1px solid %2; border-radius: 8px; color: %3; font-size: 13px; padding: 4px; outline: none; }"
+        "QListWidget::item { padding: 8px 10px; border-radius: 6px; }"
+        "QListWidget::item:hover { background: #F3E8FF; }" /* Light purple hover tint */
+        "QListWidget::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid %2; background: %4; }"
+        "QListWidget::indicator:checked { background: %5; border: none; }"
+    ).arg(Theme::SURFACE_ALT, Theme::BORDER, Theme::TEXT_PRIMARY, Theme::SURFACE, Theme::ACCENT));
     memberList_->setFixedHeight(160);
 
     for (auto it = availableUsers_.constBegin(); it != availableUsers_.constEnd(); ++it) {
@@ -85,13 +99,16 @@ CreateRoomDialog::CreateRoomDialog(const QMap<QString, QString>& availableUsers,
     auto* btnRow = new QHBoxLayout;
     auto* btnCancel = new QPushButton("Cancel");
     auto* btnOk     = new QPushButton("Create");
+    
     btnCancel->setFixedHeight(38);
     btnOk->setFixedHeight(38);
-    btnCancel->setStyleSheet(QString(
-        "QPushButton { background: transparent; color: %1; border: 1px solid %2; border-radius: 8px; padding: 0 16px; }"
-        "QPushButton:hover { background: %2; }"
-    ).arg(Theme::TEXT_SECONDARY, Theme::BORDER));
+    btnCancel->setCursor(Qt::PointingHandCursor);
+    btnOk->setCursor(Qt::PointingHandCursor);
+    
+    // Aligned cancel button to match other theme secondary actions
+    btnCancel->setStyleSheet(Theme::secondaryButton());
     btnOk->setStyleSheet(Theme::primaryButton());
+    
     btnRow->addStretch();
     btnRow->addWidget(btnCancel);
     btnRow->addWidget(btnOk);

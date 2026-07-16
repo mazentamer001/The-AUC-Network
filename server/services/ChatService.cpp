@@ -71,7 +71,12 @@ void ChatService::handleCreate(const Message& msg, std::shared_ptr<Session> send
             // private room — only the invited members get notified, not everyone
             for (const auto& memberId : room.memberIds)
                 if (memberId != sender->userId())
+                {
+                    bool found = (server_->findSessionByUserId(memberId) != nullptr);
+                    std::cout << "[handleCreate] notifying " << memberId
+                              << " -> " << (found ? "FOUND" : "NOT FOUND") << std::endl;
                     server_->sendTo(memberId, notif);
+                }
         }
         else
         {
@@ -99,6 +104,7 @@ void ChatService::handleJoin(const Message& msg, std::shared_ptr<Session> sender
     { sendError("Cannot join a direct message room", sender); return; }
 
     store_.addMemberToRoom(msg.roomId, sender->userId());   //add user to room
+    auto updatedRoom = store_.findRoom(msg.roomId);
 
     //notify room that someone joined
     Message notif;
@@ -108,7 +114,7 @@ void ChatService::handleJoin(const Message& msg, std::shared_ptr<Session> sender
     notif.sender.username = msg.sender.username;
     notif.text = msg.sender.username + " joined the room";
     notif.timestamp = currentTimestamp();
-    if(server_) server_->sendToRoom(msg.roomId, notif, nullptr);
+    if(server_) server_->sendToRoom(roomOpt->memberIds, notif, nullptr);
 
     sendOk("Joined room " + msg.roomId, sender);    //tell client that connection was successfull
 }
@@ -119,6 +125,10 @@ void ChatService::handleLeave(const Message& msg, std::shared_ptr<Session> sende
     if (msg.roomId.empty())
     { sendError("roomId is required", sender); return; }
 
+    auto roomOpt = store_.findRoom(msg.roomId);
+    if (!roomOpt)
+    { sendError("Room not found", sender); return; }
+
     //notify room that someone left
     Message notif;
     notif.type = MessageType::LEAVE;
@@ -127,9 +137,9 @@ void ChatService::handleLeave(const Message& msg, std::shared_ptr<Session> sende
     notif.sender.username = msg.sender.username;
     notif.text = msg.sender.username + " left the room";
     notif.timestamp = currentTimestamp();
-    if(server_) server_->sendToRoom(msg.roomId, notif, sender);
+    if(server_) server_->sendToRoom(roomOpt->memberIds, notif, nullptr);
 
-    sendOk("Left room " + msg.roomId, sender);  //tell client that the action was successfull
+    sendOk("Left room " + msg.roomId, sender);
 }
 
 //send a message to a room
@@ -161,8 +171,8 @@ void ChatService::handlePublic(const Message& msg, std::shared_ptr<Session> send
     cm.timestamp = out.timestamp;
     store_.addMessageToRoom(msg.roomId, cm);
 
-    //broadcast to room, every member of room recieves the message
-    if(server_) server_->sendToRoom(msg.roomId, out, nullptr);
+
+    if (server_) server_->sendToRoom(roomOpt->memberIds, out, nullptr);
 }
 
 //sends a direct 1-1 message
@@ -224,7 +234,7 @@ void ChatService::handleHistory(const Message& msg, std::shared_ptr<Session> sen
     for (auto& cm : history)    //loop and send to client (the client rebuilds the chat window from these messages)
     {
         Message out;
-        out.type            = MessageType::CHAT_PUBLIC;
+        out.type            = MessageType::CHAT_HISTORY;
         out.roomId          = cm.roomId;
         out.sender.userId   = cm.senderUserId;
         out.sender.username = cm.senderUsername;

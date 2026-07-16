@@ -12,6 +12,26 @@ class QTextEdit;
 class QPushButton;
 class QScrollArea;
 
+// ── faq panel ─────────────────────────────────────────────────────────────────
+class FaqPanel : public QWidget {
+    Q_OBJECT
+public:
+    explicit FaqPanel(QWidget* parent = nullptr);
+    void addFaqQuestion(const QString& id, const QString& title, const QString& text,
+                        const QString& author, const QString& timestamp,
+                        int upvotes, int downvotes, int answerCount);
+    void clear();
+signals:
+    void backClicked();
+    void questionClicked  (const QString& id);
+    void upvoteClicked    (const QString& id);
+    void downvoteClicked  (const QString& id);
+private:
+    QVBoxLayout* layout_;
+    QLabel*      emptyLabel_;
+};
+
+
 // ── question card (shown in list view) ───────────────────────────────────────
 class QuestionCard : public QWidget {
     Q_OBJECT
@@ -104,19 +124,6 @@ private:
     QMap<QString, AnswerWidget*> answerWidgets_;
 };
 
-// ── faq panel ─────────────────────────────────────────────────────────────────
-class FaqPanel : public QWidget {
-    Q_OBJECT
-public:
-    explicit FaqPanel(QWidget* parent = nullptr);
-    void addFaqAnswer(const QString& questionTitle, const QString& answerText,
-                      const QString& author);
-    void clear();
-signals:
-    void backClicked();
-private:
-    QVBoxLayout* layout_;
-};
 
 // ── main forum panel ──────────────────────────────────────────────────────────
 class ForumPanel : public QWidget {

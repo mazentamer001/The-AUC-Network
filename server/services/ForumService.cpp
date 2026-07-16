@@ -8,6 +8,7 @@
 #include <iostream>
 #include <random>
 #include <sstream>
+#include <algorithm>
 
 ForumService::ForumService(InMemoryStore& store) : store_(store) {}
 
@@ -102,6 +103,7 @@ void ForumService::handleGetAll(const Message& msg, std::shared_ptr<Session> sen
         resp.sender.userId = q.authorUserId;
         resp.sender.username = q.authorUsername;
         resp.timestamp = q.timestamp;
+        resp.role = std::to_string(q.upvotes) + ":" + std::to_string(q.downvotes);   // <-- must be present
         sender->send(resp);
     }
 
@@ -119,7 +121,6 @@ void ForumService::handleGetOne(const Message& msg, std::shared_ptr<Session> sen
     if (!qOpt)
     { sendError("Question not found", sender); return; }
 
-    //send the question first
     Message qResp;
     qResp.type = MessageType::QA_QUESTION;
     qResp.parentId = qOpt->questionId;
@@ -128,9 +129,9 @@ void ForumService::handleGetOne(const Message& msg, std::shared_ptr<Session> sen
     qResp.sender.userId = qOpt->authorUserId;
     qResp.sender.username = qOpt->authorUsername;
     qResp.timestamp = qOpt->timestamp;
+    qResp.role = std::to_string(qOpt->upvotes) + ":" + std::to_string(qOpt->downvotes);  // NEW
     sender->send(qResp);
 
-    //then send each answer
     for (auto& a : qOpt->answers)
     {
         Message aResp;
@@ -141,7 +142,8 @@ void ForumService::handleGetOne(const Message& msg, std::shared_ptr<Session> sen
         aResp.sender.userId = a.authorUserId;
         aResp.sender.username = a.authorUsername;
         aResp.timestamp = a.timestamp;
-        aResp.role = a.isFaq ? "FAQ" : "";  //flag FAQ answers, could be changed later when we change FAQ
+        aResp.role = (a.isFaq ? std::string("FAQ") : std::string(""))
+                + ":" + std::to_string(a.upvotes) + ":" + std::to_string(a.downvotes);  // CHANGED
         sender->send(aResp);
     }
 }
@@ -227,3 +229,32 @@ void ForumService::sendOk(const std::string& text, std::shared_ptr<Session> send
     sender->send(m);
 }
 
+// get top 5 questions by net votes (upvotes - downvotes)
+void ForumService::handleGetFaq(const Message& msg, std::shared_ptr<Session> sender)
+{
+    auto questions = store_.getAllQuestions();
+
+    std::sort(questions.begin(), questions.end(),
+        [](const ForumQuestion& a, const ForumQuestion& b) {
+            return (a.upvotes - a.downvotes) > (b.upvotes - b.downvotes);
+        });
+
+    size_t count = std::min<size_t>(5, questions.size());
+    for (size_t i = 0; i < count; ++i)
+    {
+        auto& q = questions[i];
+        Message resp;
+        resp.type            = MessageType::QA_FAQ;
+        resp.parentId        = q.questionId;
+        resp.title           = q.title;
+        resp.text            = q.text;
+        resp.sender.userId   = q.authorUserId;
+        resp.sender.username = q.authorUsername;
+        resp.timestamp       = q.timestamp;
+        resp.role            = std::to_string(q.upvotes) + ":" + std::to_string(q.downvotes);
+        sender->send(resp);
+    }
+
+    if (questions.empty())
+        sendOk("No questions yet", sender);
+}

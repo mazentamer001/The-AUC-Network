@@ -102,6 +102,7 @@ void Server::sendTo(const std::string& userId, const Message& msg)
 {
     std::lock_guard<std::mutex> lock(sessionsMutex_);
     auto it = userMap_.find(userId);
+    if (it == userMap_.end()) return;
     if (it == userMap_.end()) return; // user not connected — silently drop
 
     if (auto s = it->second.lock())
@@ -139,4 +140,20 @@ bool Server::isUserAway(const std::string& userId)
 {
     std::lock_guard<std::mutex> lock(sessionsMutex_);
     return awayUsers_.count(userId) > 0;
+}
+
+// Server.cpp
+void Server::sendToRoom(const std::vector<std::string>& memberIds, const Message& msg, std::shared_ptr<Session> exclude)
+{
+    std::lock_guard<std::mutex> lock(sessionsMutex_);
+    for (const auto& userId : memberIds)
+    {
+        auto it = userMap_.find(userId);
+        if (it == userMap_.end()) continue;
+        if (auto s = it->second.lock())
+            if (s != exclude)
+                s->send(msg);
+        else
+            userMap_.erase(it);
+    }
 }

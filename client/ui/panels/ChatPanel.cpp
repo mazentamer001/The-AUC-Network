@@ -198,6 +198,16 @@ void ChatPanel::switchToRoom(const QString& roomId)
 
     chatStack_->setCurrentWidget(roomViews_[roomId]);
     applyMemberFilter(roomId);
+
+    if (!historyRequested_.contains(roomId)) {
+        historyRequested_.insert(roomId);
+        Message msg;
+        msg.type             = MessageType::CHAT_HISTORY;
+        msg.roomId           = roomId.toStdString();
+        msg.sender.username  = displayName_.toStdString();
+        msg.sender.userId    = userId_.toStdString();
+        emit messageSent(msg);
+    }
 }
 
 void ChatPanel::onSend()
@@ -292,6 +302,11 @@ void ChatPanel::receiveMessage(const Message& msg)
         return;
     }
 
+    if (msg.type == MessageType::PROFILE_VIEW) {
+        showProfileDialog(msg);
+        return;
+    }
+
     if (msg.type == MessageType::ERROR && awaitingSummary_) {
         awaitingSummary_ = false;
         btnSummarize_->setEnabled(true);
@@ -346,6 +361,11 @@ void ChatPanel::receiveMessage(const Message& msg)
 
     if (msg.type == MessageType::LEAVE || msg.type == MessageType::PRESENCE) {
         appendChat(roomId, "System", text);
+        return;
+    }
+    if (msg.type == MessageType::CHAT_HISTORY) {
+        ensureRoomListItem(roomId, roomNames_.value(roomId, roomId));
+        appendChat(roomId, sender, text);
         return;
     }
 
@@ -421,11 +441,10 @@ void ChatPanel::appendChat(const QString& roomId, const QString& sender, const Q
         chatStack_->setCurrentWidget(view);
 }
 
-void ChatPanel::addOnlineUser(const QString& userId, const QString& displayName,
-                               const QString& username, const QString& bio)
+void ChatPanel::addOnlineUser(const QString& userId, const QString& displayName, const QString& username, const QString& bio, const QString& photoData)
 {
     knownUsers_[userId] = displayName;
-    usersSidebar_->addUser(userId, displayName, username, bio);
+    usersSidebar_->addUser(userId, displayName, username, bio, photoData);
 }
 
 void ChatPanel::removeOnlineUser(const QString& userId)
@@ -465,6 +484,10 @@ void ChatPanel::addKnownRoom(const QString& roomId)
     joinedRooms_.insert(roomId);
 }
 
+void ChatPanel::setUserPhoto(const QString& userId, const QString& photoData)
+{
+    usersSidebar_->setUserPhoto(userId, photoData);
+}
 void ChatPanel::setUserStatus(const QString& userId, UserStatus status)
 {
     usersSidebar_->setUserStatus(userId, status);
@@ -484,9 +507,34 @@ void ChatPanel::onMessageUser(const QString& userId)
 
 void ChatPanel::onViewProfile(const QString& userId)
 {
-    QString name = knownUsers_.value(userId, userId);
-    QMessageBox::information(this, "Profile",
-        "Viewing " + name + "'s profile — coming soon.");
+    if (userId.isEmpty() || userId == userId_) return;
+
+    Message msg;
+    msg.type            = MessageType::PROFILE_VIEW;
+    msg.recipientId      = userId.toStdString();
+    msg.sender.userId    = userId_.toStdString();
+    msg.sender.username  = displayName_.toStdString();
+    emit messageSent(msg);
+}
+
+void ChatPanel::showProfileDialog(const Message& msg)
+{
+    QString name      = QString::fromStdString(msg.displayName);
+    QString username  = QString::fromStdString(msg.username);
+    QString bio       = QString::fromStdString(msg.bio);
+    QString major     = QString::fromStdString(msg.major);
+    QString year      = QString::fromStdString(msg.year);
+    QString interests = QString::fromStdString(msg.interests);
+
+    QString body;
+    body += "Name: " + (name.isEmpty() ? username : name) + "\n";
+    body += "Username: @" + username + "\n";
+    if (!major.isEmpty())     body += "Major: " + major + "\n";
+    if (!year.isEmpty())      body += "Year: " + year + "\n";
+    if (!interests.isEmpty()) body += "Interests: " + interests + "\n";
+    if (!bio.isEmpty())       body += "\n" + bio;
+
+    QMessageBox::information(this, "Profile", body);
 }
 
 QString ChatPanel::resolveDirectRoomName(const QString& roomId) const
@@ -515,7 +563,7 @@ void ChatPanel::resetState()
     roomMeta_.clear();
     knownUsers_.clear();
     roomLog_.clear();
-
+    historyRequested_.clear();
     currentRoom_.clear();
     currentRoomLabel_->setText("Select a room");
 
@@ -523,3 +571,4 @@ void ChatPanel::resetState()
     usersSidebar_->clearAll();
 
 }
+

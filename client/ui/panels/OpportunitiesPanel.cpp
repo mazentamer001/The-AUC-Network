@@ -11,6 +11,10 @@
 #include <QScrollArea>
 #include <QMouseEvent>
 #include <QMessageBox>
+#include <QFileDialog>
+#include <QFile>
+#include <QFileInfo>
+#include <QPixmap>
 #include "ui/theme/Theme.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +22,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 OpportunityCard::OpportunityCard(const QString& id, const QString& title,
                                   const QString& category, const QString& poster,
-                                  const QString& description, QWidget* parent)
+                                  const QString& description, const QString& imageData,
+                                  QWidget* parent)
     : QWidget(parent), id_(id)
 {
     setFixedSize(220, 190);
@@ -49,7 +54,19 @@ OpportunityCard::OpportunityCard(const QString& id, const QString& title,
     auto* posterLbl = new QLabel("Posted by " + poster);
     posterLbl->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
 
+    QLabel* imgLbl = nullptr;
+    if (!imageData.isEmpty()) {
+        QPixmap pix;
+        if (pix.loadFromData(QByteArray::fromBase64(imageData.toUtf8()))) {
+            imgLbl = new QLabel;
+            imgLbl->setFixedHeight(50);
+            imgLbl->setAlignment(Qt::AlignCenter);
+            imgLbl->setPixmap(pix.scaled(200, 50, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+        }
+    }
+
     layout->addWidget(badge, 0, Qt::AlignLeft);
+    if (imgLbl) layout->addWidget(imgLbl);
     layout->addWidget(titleLbl);
     layout->addStretch();
     layout->addWidget(posterLbl);
@@ -105,7 +122,7 @@ PostOpportunityPanel::PostOpportunityPanel(QWidget* parent) : QWidget(parent)
 
     addLabel("Type");
     category_ = new QComboBox;
-    category_->addItems({"Job", "Internship", "Volunteer", "Research", "Clubs", "Competitions" , "Other"});
+    category_->addItems({"Job", "Internship", "Volunteer", "Research", "Other"});
     category_->setStyleSheet(Theme::textInput()); category_->setFixedHeight(38);
     form->addWidget(category_);
     form->addSpacing(10);
@@ -116,10 +133,20 @@ PostOpportunityPanel::PostOpportunityPanel(QWidget* parent) : QWidget(parent)
     form->addWidget(location_);
     form->addSpacing(10);
 
-    addLabel("Link / flyer URL");
-    mediaUrl_ = new QLineEdit; mediaUrl_->setPlaceholderText("https://...");
-    mediaUrl_->setStyleSheet(Theme::textInput()); mediaUrl_->setFixedHeight(38);
-    form->addWidget(mediaUrl_);
+    addLabel("Flyer / photo");
+    auto* photoRow = new QHBoxLayout;
+    photoRow->setSpacing(8);
+    photoStatusLabel_ = new QLabel("No photo selected");
+    photoStatusLabel_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::mutedText()));
+    auto* btnChoosePhoto = new QPushButton("Choose photo...");
+    btnChoosePhoto->setFixedHeight(38);
+    btnChoosePhoto->setStyleSheet(QString(
+        "QPushButton { background: %1; color: %2; border: 1px solid %3; border-radius: 8px; padding: 0 14px; font-size: 12px; font-weight: 500; }"
+        "QPushButton:hover { background: %4; }"
+    ).arg(Theme::SURFACE_ALT, Theme::TEXT_PRIMARY, Theme::BORDER, Theme::SURFACE));
+    photoRow->addWidget(photoStatusLabel_, 1);
+    photoRow->addWidget(btnChoosePhoto);
+    form->addLayout(photoRow);
     form->addSpacing(10);
 
     addLabel("Description");
@@ -137,8 +164,34 @@ PostOpportunityPanel::PostOpportunityPanel(QWidget* parent) : QWidget(parent)
 
     outer->addWidget(card);
 
-    connect(btnSubmit, &QPushButton::clicked, this, &PostOpportunityPanel::onSubmit);
-    connect(btnBack,   &QPushButton::clicked, this, &PostOpportunityPanel::cancelled);
+    connect(btnSubmit,      &QPushButton::clicked, this, &PostOpportunityPanel::onSubmit);
+    connect(btnBack,        &QPushButton::clicked, this, &PostOpportunityPanel::cancelled);
+    connect(btnChoosePhoto, &QPushButton::clicked, this, &PostOpportunityPanel::onChoosePhoto);
+}
+
+void PostOpportunityPanel::onChoosePhoto()
+{
+    QString path = QFileDialog::getOpenFileName(this, "Choose flyer / photo", QString(),
+                                                  "Images (*.png *.jpg *.jpeg *.gif)");
+    if (path.isEmpty()) return;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, "Read error", "Could not read the selected image.");
+        return;
+    }
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    if (fileData.size() > 500 * 1024) {
+        QMessageBox::warning(this, "Image too large", "Photos must be under 500KB.");
+        return;
+    }
+
+    pendingImageBase64_ = QString::fromLatin1(fileData.toBase64());
+
+    QFileInfo info(path);
+    photoStatusLabel_->setText("Selected: " + info.fileName());
 }
 
 void PostOpportunityPanel::onSubmit()
@@ -152,13 +205,15 @@ void PostOpportunityPanel::onSubmit()
     msg.title           = title_->text().trimmed().toStdString();
     msg.category         = category_->currentText().toStdString();
     msg.location          = location_->text().trimmed().toStdString();
-    msg.mediaUrl        = mediaUrl_->text().trimmed().toStdString();
+    msg.mediaUrl        = pendingImageBase64_.toStdString();
     msg.text            = description_->toPlainText().trimmed().toStdString();
     msg.sender.username = displayName_.toStdString();
     emit submitted(msg);
 
-    title_->clear(); location_->clear(); mediaUrl_->clear(); description_->clear();
+    title_->clear(); location_->clear(); description_->clear();
     category_->setCurrentIndex(0);
+    pendingImageBase64_.clear();
+    photoStatusLabel_->setText("No photo selected");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,6 +244,13 @@ OpportunityDetailPanel::OpportunityDetailPanel(QWidget* parent) : QWidget(parent
     auto* layout = new QVBoxLayout(card);
     layout->setContentsMargins(32, 32, 32, 32);
     layout->setSpacing(10);
+
+    img_ = new QLabel;
+    img_->setFixedHeight(160);
+    img_->setAlignment(Qt::AlignCenter);
+    img_->setStyleSheet(QString("background: %1; border-radius: 8px; border: none;").arg(Theme::SURFACE_ALT));
+    img_->setVisible(false);
+    layout->addWidget(img_);
 
     title_ = new QLabel;
     title_->setStyleSheet(QString("border: none; background: transparent; %1").arg(Theme::heading()));
@@ -234,7 +296,7 @@ OpportunityDetailPanel::OpportunityDetailPanel(QWidget* parent) : QWidget(parent
 
 void OpportunityDetailPanel::show(const QString& id, const QString& title, const QString& category,
                                    const QString& location, const QString& poster, const QString& posterId,
-                                   const QString& description)
+                                   const QString& description, const QString& imageData)
 {
     currentId_       = id;
     currentTitle_    = title;
@@ -243,6 +305,18 @@ void OpportunityDetailPanel::show(const QString& id, const QString& title, const
     category_->setText(category + (location.isEmpty() ? "" : " · " + location));
     poster_->setText("Posted by " + poster);
     description_->setText(description.isEmpty() ? "No description provided." : description);
+
+    img_->setPixmap(QPixmap());
+    img_->setVisible(false);
+    if (!imageData.isEmpty()) {
+        QPixmap pix;
+        if (pix.loadFromData(QByteArray::fromBase64(imageData.toUtf8()))) {
+            img_->setPixmap(pix.scaled(img_->width(), img_->height(),
+                Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+            img_->setVisible(true);
+        }
+    }
+
     QWidget::show();
 }
 
@@ -357,7 +431,7 @@ void OpportunitiesPanel::onCardClicked(const QString& id)
 {
     if (!opportunities_.contains(id)) return;
     auto& o = opportunities_[id];
-    detailPanel_->show(o.id, o.title, o.category, o.location, o.poster, o.posterId, o.description);
+    detailPanel_->show(o.id, o.title, o.category, o.location, o.poster, o.posterId, o.description, o.imageData);
     stack_->setCurrentIndex(2);
 }
 
@@ -368,7 +442,7 @@ void OpportunitiesPanel::onSearch()
     for (auto& o : opportunities_) {
         if (query.isEmpty() || o.title.toLower().contains(query) ||
             o.description.toLower().contains(query) || o.category.toLower().contains(query)) {
-            addCard(o.id, o.title, o.category, o.location, o.poster, o.posterId, o.description);
+            addCard(o.id, o.title, o.category, o.location, o.poster, o.posterId, o.description, o.imageData);
         }
     }
 }
@@ -383,12 +457,12 @@ void OpportunitiesPanel::clearGrid()
 
 void OpportunitiesPanel::addCard(const QString& id, const QString& title, const QString& category,
                                   const QString& location, const QString& poster, const QString& posterId,
-                                  const QString& description)
+                                  const QString& description, const QString& imageData)
 {
     int count = grid_->count();
     int col   = count % 4;
     int row   = count / 4;
-    auto* card = new OpportunityCard(id, title, category, poster, description);
+    auto* card = new OpportunityCard(id, title, category, poster, description, imageData);
     connect(card, &OpportunityCard::clicked, this, &OpportunitiesPanel::onCardClicked);
     grid_->addWidget(card, row, col);
 }
@@ -404,10 +478,11 @@ void OpportunitiesPanel::receiveMessage(const Message& msg)
         QString poster   = QString::fromStdString(msg.sender.username);
         QString posterId = QString::fromStdString(msg.sender.userId);
         QString desc     = QString::fromStdString(msg.text);
+        QString imgData  = QString::fromStdString(msg.mediaUrl);
 
         if (id.isEmpty() || title.isEmpty()) return;
 
-        opportunities_[id] = {id, title, category, location, poster, posterId, desc};
+        opportunities_[id] = {id, title, category, location, poster, posterId, desc, imgData};
 
         auto existing = gridWidget_->findChildren<OpportunityCard*>();
         for (auto* c : existing)
@@ -420,7 +495,7 @@ void OpportunitiesPanel::receiveMessage(const Message& msg)
             }
         }
 
-        addCard(id, title, category, location, poster, posterId, desc);
+        addCard(id, title, category, location, poster, posterId, desc, imgData);
     }
 
     if (msg.type == MessageType::OPP_INQUIRY) {
@@ -437,17 +512,5 @@ void OpportunitiesPanel::receiveMessage(const Message& msg)
         auto existing = gridWidget_->findChildren<OpportunityCard*>();
         for (auto* c : existing)
             if (c->opportunityId() == id) { c->deleteLater(); break; }
-    }
-}
-
-void OpportunitiesPanel::setToken(const QString& token)
-{
-    token_ = token;
-    if (!token_.isEmpty()) {
-        Message msg;
-        msg.type  = MessageType::OPP_SEARCH;
-        msg.token = token_.toStdString();
-        msg.text  = "";
-        emit sendMessage(msg);
     }
 }

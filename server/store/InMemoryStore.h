@@ -45,7 +45,7 @@ public:
                                       const std::string& userId);
     bool                     addMessageToRoom(const std::string& roomId,
                                               const ChatMessage& msg);
-    std::vector<ChatMessage> getRoomHistory(const std::string& roomId);
+    std::vector<ChatMessage> getRoomHistory(const std::string& roomId, int limit = 100);
     std::vector<ChatRoom>    getPublicRooms();
     std::vector<ChatRoom>    getRoomsForUser(const std::string& userId); 
 
